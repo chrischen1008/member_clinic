@@ -1,19 +1,26 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <title>會員列表</title>
+<meta charset="UTF-8">
+<title>會員管理</title>
 
-    <!-- DataTables -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<!-- DataTables -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+<style>
+td.editable:hover {
+    background: #f0f8ff;
+    cursor: pointer;
+}
+</style>
 
 </head>
 
 <body>
 
-<h2>會員資料表（可篩選）</h2>
+<h2>會員管理系統</h2>
 
 <table id="membersTable" class="display">
     <thead>
@@ -28,11 +35,12 @@
 
     <tbody>
         {% for m in members %}
-        <tr>
+        <tr data-id="{{ m.id }}">
             <td>{{ m.id }}</td>
-            <td>{{ m.name }}</td>
-            <td>{{ m.email }}</td>
-            <td>{{ m.phone }}</td>
+
+            <td class="editable" data-field="name">{{ m.name }}</td>
+            <td class="editable" data-field="email">{{ m.email }}</td>
+            <td class="editable" data-field="phone">{{ m.phone }}</td>
             <td>{{ m.created_at }}</td>
         </tr>
         {% endfor %}
@@ -55,6 +63,58 @@ $(document).ready(function () {
             }
         }
     });
+});
+</script>
+
+<script>
+// ===== inline edit =====
+document.querySelectorAll(".editable").forEach(cell => {
+
+    cell.addEventListener("click", function () {
+
+        if (this.querySelector("input")) return;
+
+        let oldValue = this.innerText;
+        let field = this.dataset.field;
+        let row = this.parentElement;
+        let id = row.dataset.id;
+
+        let input = document.createElement("input");
+        input.value = oldValue;
+
+        this.innerText = "";
+        this.appendChild(input);
+        input.focus();
+
+        function save() {
+            let newValue = input.value;
+
+            fetch(`/members/${id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    [field]: newValue
+                })
+            })
+            .then(res => res.json())
+            .then(() => {
+                cell.innerText = newValue;
+            })
+            .catch(() => {
+                cell.innerText = oldValue;
+                alert("更新失敗");
+            });
+        }
+
+        input.addEventListener("blur", save);
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") save();
+        });
+
+    });
+
 });
 </script>
 

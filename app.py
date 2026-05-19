@@ -52,13 +52,27 @@ def create_member():
 def update_member(member_id):
     data = request.json
 
-    res = supabase.table("members").update({
-        "name": data["name"],
-        "email": data["email"]
-    }).eq("id", member_id).execute()
+    update_data = {}
+
+    # 只更新有傳的欄位（避免覆蓋）
+    if "name" in data:
+        update_data["name"] = data["name"]
+
+    if "email" in data:
+        update_data["email"] = data["email"]
+
+    if "phone" in data:
+        update_data["phone"] = data["phone"]
+
+    if "level" in data:
+        update_data["level"] = data["level"]
+
+    res = supabase.table("members") \
+        .update(update_data) \
+        .eq("id", member_id) \
+        .execute()
 
     return jsonify(res.data)
-
 
 # ===== 刪除會員 =====
 @app.route("/members/<int:member_id>", methods=["DELETE"])
