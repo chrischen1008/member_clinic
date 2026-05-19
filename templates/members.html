@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>會員列表</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 30px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>會員資料表</h2>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>姓名</th>
+        <th>Email</th>
+        <th>電話</th>
+        <th>等級</th>
+        <th>建立時間</th>
+    </tr>
+
+    {% for m in members %}
+    <tr>
+        <td>{{ m.id }}</td>
+        <td>{{ m.name }}</td>
+        <td>{{ m.email }}</td>
+        <td>{{ m.phone }}</td>
+        <td>{{ m.level }}</td>
+        <td>{{ m.created_at }}</td>
+    </tr>
+    {% endfor %}
+
+</table>
+
+</body>
+</html>

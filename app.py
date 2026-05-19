@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from supabase import create_client
 
 app = Flask(__name__)
@@ -17,11 +17,20 @@ def home():
     return {"status": "ok", "message": "Flask + Supabase Member System"}
 
 
-# ===== 取得所有會員 =====
-@app.route("/members", methods=["GET"])
-def get_members():
-    res = supabase.table("members").select("*").order("id").execute()
+# ===== API（原本的）=====
+@app.route("/members/api", methods=["GET"])
+def get_members_api():
+    res = supabase.table("members").select("*").execute()
     return jsonify(res.data)
+
+
+# ===== 網頁版（重點）=====
+@app.route("/members", methods=["GET"])
+def members_page():
+    res = supabase.table("members").select("*").order("id").execute()
+    members = res.data
+
+    return render_template("members.html", members=members)
 
 
 # ===== 新增會員 =====
