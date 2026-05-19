@@ -4,59 +4,59 @@
     <meta charset="UTF-8">
     <title>會員列表</title>
 
-    <style>
-        body {
-            font-family: Arial;
-            margin: 30px;
-        }
+    <!-- DataTables -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-        }
-
-        th {
-            background-color: #f4f4f4;
-        }
-
-        tr:hover {
-            background-color: #f9f9f9;
-        }
-    </style>
 </head>
 
 <body>
 
-<h2>會員資料表</h2>
+<h2>會員資料表（可篩選）</h2>
 
-<table>
-    <tr>
-        <th>ID</th>
-        <th>姓名</th>
-        <th>Email</th>
-        <th>電話</th>
-        <th>等級</th>
-        <th>建立時間</th>
-    </tr>
+<table id="membersTable" class="display">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>姓名</th>
+            <th>Email</th>
+            <th>電話</th>
+            <th>建立時間</th>
+        </tr>
+    </thead>
 
-    {% for m in members %}
-    <tr>
-        <td>{{ m.id }}</td>
-        <td>{{ m.name }}</td>
-        <td>{{ m.email }}</td>
-        <td>{{ m.phone }}</td>
-        <td>{{ m.level }}</td>
-        <td>{{ m.created_at }}</td>
-    </tr>
-    {% endfor %}
-
+    <tbody>
+        {% for m in members %}
+        <tr>
+            <td>{{ m.id }}</td>
+            <td>{{ m.name }}</td>
+            <td>{{ m.email }}</td>
+            <td>{{ m.phone }}</td>
+            <td>{{ m.created_at }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
 </table>
+
+<script>
+$(document).ready(function () {
+    $('#membersTable').DataTable({
+        pageLength: 5,
+        language: {
+            search: "搜尋：",
+            lengthMenu: "顯示 _MENU_ 筆",
+            info: "第 _START_ 到 _END_ 筆 / 共 _TOTAL_ 筆",
+            paginate: {
+                first: "第一頁",
+                last: "最後頁",
+                next: "下一頁",
+                previous: "上一頁"
+            }
+        }
+    });
+});
+</script>
 
 </body>
 </html>
