@@ -1,18 +1,27 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
 <meta charset="UTF-8">
-<title>會員管理</title>
+<title>會員管理系統</title>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- DataTables -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
 <style>
-td.editable:hover {
-    background: #f0f8ff;
-    cursor: pointer;
+body {
+    padding: 20px;
+}
+.selected {
+    background: #d6ecff !important;
 }
 </style>
 
@@ -22,100 +31,239 @@ td.editable:hover {
 
 <h2>會員管理系統</h2>
 
-<table id="membersTable" class="display">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>姓名</th>
-            <th>Email</th>
-            <th>電話</th>
-            <th>建立時間</th>
-        </tr>
-    </thead>
+<!-- 工具列 -->
+<div class="mb-2">
 
-    <tbody>
-        {% for m in members %}
-        <tr data-id="{{ m.id }}">
-            <td>{{ m.id }}</td>
+    <button class="btn btn-primary" id="btnAdd">新增</button>
+    <button class="btn btn-warning" id="btnEdit">修改</button>
+    <button class="btn btn-danger" id="btnDelete">刪除</button>
 
-            <td class="editable" data-field="name">{{ m.name }}</td>
-            <td class="editable" data-field="email">{{ m.email }}</td>
-            <td class="editable" data-field="phone">{{ m.phone }}</td>
-            <td>{{ m.created_at }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+    <input id="customSearch" class="form-control mt-2" placeholder="搜尋...">
+
+</div>
+
+<table id="membersTable" class="display table table-striped">
+
+<thead>
+<tr>
+    <th>ID</th>
+    <th>姓名</th>
+    <th>電話</th>
+    <th>生日</th>
+    <th>性別</th>
+    <th>開始</th>
+    <th>結束</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for m in members %}
+<tr data-id="{{ m.id }}">
+    <td>{{ m.id }}</td>
+    <td>{{ m.name }}</td>
+    <td>{{ m.phone }}</td>
+    <td>{{ m.birth }}</td>
+    <td>{{ m.gender }}</td>
+    <td>{{ m.start_at }}</td>
+    <td>{{ m.end_at }}</td>
+</tr>
+{% endfor %}
+
+</tbody>
+
 </table>
 
+<!-- ================= Modal ================= -->
+<div class="modal fade" id="memberModal">
+
+<div class="modal-dialog">
+
+<div class="modal-content">
+
+<div class="modal-header">
+<h5 class="modal-title">會員資料</h5>
+<button class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<div class="modal-body">
+
+<input type="hidden" id="m_id">
+
+<input class="form-control mb-2" id="m_name" placeholder="姓名">
+<input class="form-control mb-2" id="m_phone" placeholder="電話">
+<div class="form-floating mb-2">
+  <input type="date" class="form-control" id="m_birth">
+  <label for="m_birth">生日</label>
+</div>
+<select class="form-control mb-2" id="m_gender">
+    <option value="" selected disabled hidden>請選擇性別</option>
+    <option value="男">男</option>
+    <option value="女">女</option>
+</select>
+
+<div class="form-floating mb-2">
+  <input type="date" class="form-control" id="m_start">
+  <label for="m_birth">開始日</label>
+</div>
+<div class="form-floating mb-2">
+  <input type="date" class="form-control" id="m_end">
+  <label for="m_birth">結束日</label>
+</div>
+
+</div>
+
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+<button class="btn btn-primary" id="saveBtn">儲存</button>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
 <script>
+
+let table;
+let mode = "add"; // add / edit
+
 $(document).ready(function () {
-    $('#membersTable').DataTable({
+
+    table = $('#membersTable').DataTable({
         pageLength: 5,
-        language: {
-            search: "搜尋：",
-            lengthMenu: "顯示 _MENU_ 筆",
-            info: "第 _START_ 到 _END_ 筆 / 共 _TOTAL_ 筆",
-            paginate: {
-                first: "第一頁",
-                last: "最後頁",
-                next: "下一頁",
-                previous: "上一頁"
-            }
-        }
+        dom: 'rtip'
     });
-});
-</script>
 
-<script>
-// ===== inline edit =====
-document.querySelectorAll(".editable").forEach(cell => {
+    // 搜尋
+    $('#customSearch').on('keyup', function () {
+        table.search(this.value).draw();
+    });
 
-    cell.addEventListener("click", function () {
+    // 選取 row
+    $('#membersTable tbody').on('click', 'tr', function () {
 
-        if (this.querySelector("input")) return;
-
-        let oldValue = this.innerText;
-        let field = this.dataset.field;
-        let row = this.parentElement;
-        let id = row.dataset.id;
-
-        let input = document.createElement("input");
-        input.value = oldValue;
-
-        this.innerText = "";
-        this.appendChild(input);
-        input.focus();
-
-        function save() {
-            let newValue = input.value;
-
-            fetch(`/members/${id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    [field]: newValue
-                })
-            })
-            .then(res => res.json())
-            .then(() => {
-                cell.innerText = newValue;
-            })
-            .catch(() => {
-                cell.innerText = oldValue;
-                alert("更新失敗");
-            });
-        }
-
-        input.addEventListener("blur", save);
-        input.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") save();
-        });
+        $('#membersTable tbody tr').removeClass('selected');
+        $(this).addClass('selected');
 
     });
 
 });
+
+
+// ========== 新增 ==========
+$('#btnAdd').click(function () {
+
+    mode = "add";
+
+    clearForm();
+
+    $('#memberModal').modal('show');
+
+});
+
+
+// ========== 修改 ==========
+$('#btnEdit').click(function () {
+
+    let row = $('#membersTable tbody tr.selected');
+
+    if(row.length === 0){
+        alert("請先選擇資料");
+        return;
+    }
+
+    mode = "edit";
+
+    let tds = row.find('td');
+
+    $('#m_id').val(row.data('id'));
+    $('#m_name').val($(tds[1]).text());
+    $('#m_phone').val($(tds[2]).text());
+    $('#m_birth').val($(tds[3]).text());
+    $('#m_gender').val($(tds[4]).text());
+    $('#m_start').val($(tds[5]).text());
+    $('#m_end').val($(tds[6]).text());
+
+    $('#memberModal').modal('show');
+
+});
+
+
+// ========== 儲存 ==========
+$('#saveBtn').click(function () {
+
+    let payload = {
+        name: $('#m_name').val(),
+        phone: $('#m_phone').val(),
+        birth: $('#m_birth').val(),
+        gender: $('#m_gender').val(),
+        start_at: $('#m_start').val(),
+        end_at: $('#m_end').val()
+    };
+
+    let url = "/members";
+    let method = "POST";
+
+    if(mode === "edit"){
+        url = "/members/" + $('#m_id').val();
+        method = "PUT";
+    }
+
+    fetch(url, {
+        method: method,
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(() => {
+        location.reload();
+    });
+
+});
+
+
+// ========== 刪除 ==========
+$('#btnDelete').click(function () {
+
+    let row = $('#membersTable tbody tr.selected');
+
+    if(row.length === 0){
+        alert("請選擇資料");
+        return;
+    }
+
+    let id = row.data('id');
+
+    if(!confirm("確定刪除？")) return;
+
+    fetch("/members/" + id, {
+        method: "DELETE"
+    })
+    .then(() => location.reload());
+
+});
+
+
+// ========== 清空 ==========
+function clearForm(){
+    $('#m_id').val("");
+    $('#m_name').val("");
+    $('#m_phone').val("");
+    $('#m_birth').val("");
+    $('#m_gender').val("男");
+    $('#m_start').val("");
+    $('#m_end').val("");
+}
+
+function formatDate(value){
+    if(!value) return '';
+    return value.split('T')[0];
+}
+
 </script>
 
 </body>

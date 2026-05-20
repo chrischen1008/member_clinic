@@ -29,7 +29,15 @@ def get_members_api():
 def members_page():
     res = supabase.table("members").select("*").order("id").execute()
     members = res.data
-
+    for m in members:
+        if m.get("birth"):
+            m["birth"] = m["birth"].split("T")[0]
+    for m in members:
+        if m.get("start_at"):
+            m["start_at"] = m["start_at"].split("T")[0]
+    for m in members:
+        if m.get("end_at"):
+            m["end_at"] = m["end_at"].split("T")[0]
     return render_template("members.html", members=members)
 
 
@@ -38,48 +46,18 @@ def members_page():
 def create_member():
     data = request.json
 
-    res = supabase.table("members").insert({
-        "name": data["name"],
-        "email": data["email"],
-        "password": data["password"]   # ⚠️ demo 用，正式請 hash
-    }).execute()
-
-    return jsonify(res.data)
-
+    return supabase.table("members").insert(data).execute().data
 
 # ===== 更新會員 =====
-@app.route("/members/<int:member_id>", methods=["PUT"])
-def update_member(member_id):
+@app.route("/members/<id>", methods=["PUT"])
+def update_member(id):
+
     data = request.json
 
-    update_data = {}
-
-    # 只更新有傳的欄位（避免覆蓋）
-    if "name" in data:
-        update_data["name"] = data["name"]
-
-    if "email" in data:
-        update_data["email"] = data["email"]
-
-    if "phone" in data:
-        update_data["phone"] = data["phone"]
-
-    if "level" in data:
-        update_data["level"] = data["level"]
-
-    res = supabase.table("members") \
-        .update(update_data) \
-        .eq("id", member_id) \
-        .execute()
-
-    return jsonify(res.data)
-
-# ===== 刪除會員 =====
-@app.route("/members/<int:member_id>", methods=["DELETE"])
-def delete_member(member_id):
-    res = supabase.table("members").delete().eq("id", member_id).execute()
-    return jsonify(res.data)
-
+    return supabase.table("members") \
+        .update(data) \
+        .eq("id", id) \
+        .execute().data
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
