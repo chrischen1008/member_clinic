@@ -27,7 +27,7 @@ def get_members_api():
 # ===== 網頁版（重點）=====
 @app.route("/members", methods=["GET"])
 def members_page():
-    res = supabase.table("members").select("*").order("id").execute()
+    res = supabase.table("members").select("*").eq("is_delete",False).order("id").execute()
     members = res.data
     for m in members:
         if m.get("birth"):
@@ -38,7 +38,12 @@ def members_page():
     for m in members:
         if m.get("end_at"):
             m["end_at"] = m["end_at"].split("T")[0]
-    return render_template("members.html", members=members)
+            
+    return render_template(
+        "members.html",
+        members=members,
+        active="members"
+    )
 
 
 # ===== 新增會員 =====
@@ -58,6 +63,90 @@ def update_member(id):
         .update(data) \
         .eq("id", id) \
         .execute().data
+
+# ===== 刪除會員 =====
+@app.route("/members/<id>", methods=["DELETE"])
+def delete_member(id):
+
+    return supabase.table("members") \
+        .update({"is_delete": True}) \
+        .eq("id", id) \
+        .execute().data
+
+#======療程清單========
+@app.route("/course_list")
+def course_list():
+
+    course_list = supabase.table("course").select("*").execute().data or []
+    items = supabase.table("course_item").select("*").execute().data or []
+
+    for c in course_list:
+        c["items"] = [i for i in items if i["course_id"] == c["id"]]
+
+    return render_template("course_list.html", courses=course_list)
+
+@app.route("/courses", methods=["GET"])
+def get_courses():
+    courses = supabase.table("course").select("*").order("id").execute().data or []
+    items = supabase.table("course_item").select("*").order("id").execute().data or []
+
+    for c in courses:
+        c["items"] = [i for i in items if i["course_id"] == c["id"]]
+
+    return jsonify(courses)
+
+@app.route("/course", methods=["POST"])
+def create_course():
+    data = request.json
+    return supabase.table("course").insert(data).execute().data
+
+@app.route("/course/<id>", methods=["PUT"])
+def update_course(id):
+    data = request.json
+    return supabase.table("course").update(data).eq("id", id).execute().data
+
+@app.route("/course/<id>", methods=["DELETE"])
+def delete_course(id):
+    # 1️⃣ 先刪 course_item（用 course_id）
+    supabase.table("course_item") \
+        .delete() \
+        .eq("course_id", id) \
+        .execute()
+
+    # 2️⃣ 再刪 course
+    res = supabase.table("course") \
+        .delete() \
+        .eq("id", id) \
+        .execute()
+
+    return res.data
+
+@app.route("/course/<course_id>/item", methods=["POST"])
+def add_item(course_id):
+    data = request.json
+    res = supabase.table("course_item").insert({
+        "course_id": int(course_id),
+        "name": data["name"]
+    }).execute()
+
+    return res.data
+
+@app.route("/course_item/<id>", methods=["PUT"])
+def update_item(id):
+    data = request.json
+    return supabase.table("course_item").update(data).eq("id", id).execute().data
+
+@app.route("/course_item/<id>", methods=["DELETE"])
+def delete_item(id):
+    return supabase.table("course_item").delete().eq("id", id).execute().data
+
+@app.route("/orders")
+def orders():
+    return render_template("orders.html", active="orders")
+
+@app.route("/reports")
+def reports():
+    return render_template("reports.html", active="reports")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

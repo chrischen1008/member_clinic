@@ -1,0 +1,262 @@
+{% extends "layout.html" %}
+{% block title %}療程管理{% endblock %}
+
+{% block content %}
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+
+.course-row {
+    cursor: pointer;
+}
+
+.course-row:hover {
+    background: #f5f9ff;
+}
+
+.toggle-icon {
+    width: 40px;
+    text-align: center;
+    user-select: none;
+    font-size: 18px;
+}
+
+.actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.detail-box {
+    background: #fff;
+    border-left: 4px solid #0d6efd;
+    padding: 12px;
+}
+
+.item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.item-name {
+    flex: 1;
+}
+
+</style>
+
+<div class="container mt-3">
+
+<h3 class="mb-3">療程管理</h3>
+
+<button id="addCourseBtn" class="btn btn-primary mb-3">
+    + 新增療程
+</button>
+
+<table class="table table-bordered table-hover">
+
+<thead class="table-dark">
+<tr>
+    <th width="40"></th>
+    <th>療程名稱</th>
+    <th width="250">操作</th>
+</tr>
+</thead>
+
+<tbody id="courseBody"></tbody>
+
+</table>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script>
+
+// ================= load =================
+function load() {
+    $.get("/courses", function (data) {
+        render(data);
+    });
+}
+
+// ================= render =================
+function render(courses) {
+
+    let html = "";
+
+    courses.forEach(c => {
+
+        html += `
+        <tr class="course-row" data-id="${c.id}">
+            <td class="toggle-icon">▶</td>
+
+            <td class="course-title">
+                ${c.course_info}
+            </td>
+
+            <td class="actions">
+                <button class="btn btn-sm btn-success edit-course">修改</button>
+                <button class="btn btn-sm btn-danger del-course">刪除</button>
+                <button class="btn btn-sm btn-secondary add-item-btn">+ 項目</button>
+            </td>
+        </tr>
+
+        <tr class="detail-row" style="display:none;">
+            <td colspan="3">
+                <div class="detail-box">
+                    ${renderItems(c.items)}
+                </div>
+            </td>
+        </tr>
+        `;
+    });
+
+    $("#courseBody").html(html);
+}
+
+// ================= items =================
+function renderItems(items) {
+
+    let html = "";
+
+    if (items && items.length > 0) {
+
+        items.forEach(i => {
+
+            html += `
+            <div class="item-row" data-id="${i.id}">
+
+                <span class="item-name">
+                    ${i.name}
+                </span>
+
+                <div class="actions">
+                    <button class="btn btn-sm btn-success edit-item">修改</button>
+                    <button class="btn btn-sm btn-outline-danger del-item">刪除</button>
+                </div>
+
+            </div>
+            `;
+        });
+
+    } else {
+        html += `<div class="text-muted">沒有項目</div>`;
+    }
+
+    return html;
+}
+
+// ================= toggle（無動畫） =================
+$(document).on("click", ".toggle-icon", function () {
+
+    let row = $(this).closest("tr");
+    let detail = row.next(".detail-row");
+
+    detail.toggle();
+
+    // ✔ 切換箭頭
+    if (detail.is(":visible")) {
+        $(this).text("▼");
+    } else {
+        $(this).text("▶");
+    }
+});
+
+// ================= course edit =================
+$(document).on("click", ".edit-course", function () {
+
+    let row = $(this).closest("tr.course-row");
+    let id = row.data("id");
+
+    let oldName = row.find(".course-title").text().trim();
+
+    let newName = prompt("修改療程名稱", oldName);
+    if (!newName) return;
+
+    fetch(`/course/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course_info: newName })
+    }).then(() => load());
+});
+
+// ================= delete course =================
+$(document).on("click", ".del-course", function () {
+
+    let id = $(this).closest("tr.course-row").data("id");
+
+    if (!confirm("確定刪除？")) return;
+
+    fetch(`/course/${id}`, {
+        method: "DELETE"
+    }).then(() => load());
+});
+
+// ================= add item =================
+$(document).on("click", ".add-item-btn", function () {
+
+    let courseId = $(this).closest("tr.course-row").data("id");
+
+    let name = prompt("輸入項目名稱");
+    if (!name) return;
+
+    fetch(`/course/${courseId}/item`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+    }).then(() => load());
+});
+
+// ================= item edit =================
+$(document).on("click", ".edit-item", function () {
+
+    let row = $(this).closest(".item-row");
+    let id = row.data("id");
+
+    let oldName = row.find(".item-name").text().trim();
+
+    let newName = prompt("修改項目名稱", oldName);
+    if (!newName) return;
+
+    fetch(`/course_item/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName })
+    }).then(() => load());
+});
+
+// ================= item delete =================
+$(document).on("click", ".del-item", function () {
+
+    let id = $(this).closest(".item-row").data("id");
+
+    fetch(`/course_item/${id}`, {
+        method: "DELETE"
+    }).then(() => load());
+});
+
+// ================= add course =================
+$("#addCourseBtn").click(function () {
+
+    let name = prompt("輸入療程名稱");
+    if (!name) return;
+
+    fetch("/course", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course_info: name })
+    }).then(() => load());
+});
+
+// ================= init =================
+$(document).ready(function () {
+    load();
+});
+
+</script>
+
+{% endblock %}

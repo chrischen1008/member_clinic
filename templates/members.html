@@ -1,35 +1,9 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
+{% extends "layout.html" %}
+{% block title %}會員管理{% endblock %}
 
-<head>
-<meta charset="UTF-8">
-<title>會員管理系統</title>
+{% block content %}
 
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-<!-- Bootstrap 5 -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- DataTables -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-
-<style>
-body {
-    padding: 20px;
-}
-.selected {
-    background: #d6ecff !important;
-}
-</style>
-
-</head>
-
-<body>
-
-<h2>會員管理系統</h2>
+<h2>會員基本資料</h2>
 
 <!-- 工具列 -->
 <div class="mb-2">
@@ -74,11 +48,9 @@ body {
 
 </table>
 
-<!-- ================= Modal ================= -->
+<!-- Modal（原封不動保留） -->
 <div class="modal fade" id="memberModal">
-
 <div class="modal-dialog">
-
 <div class="modal-content">
 
 <div class="modal-header">
@@ -92,23 +64,26 @@ body {
 
 <input class="form-control mb-2" id="m_name" placeholder="姓名">
 <input class="form-control mb-2" id="m_phone" placeholder="電話">
+
 <div class="form-floating mb-2">
   <input type="date" class="form-control" id="m_birth">
-  <label for="m_birth">生日</label>
+  <label>生日</label>
 </div>
+
 <select class="form-control mb-2" id="m_gender">
-    <option value="" selected disabled hidden>請選擇性別</option>
+    <option value="" disabled selected>請選擇性別</option>
     <option value="男">男</option>
     <option value="女">女</option>
 </select>
 
 <div class="form-floating mb-2">
   <input type="date" class="form-control" id="m_start">
-  <label for="m_birth">開始日</label>
+  <label>開始日</label>
 </div>
+
 <div class="form-floating mb-2">
   <input type="date" class="form-control" id="m_end">
-  <label for="m_birth">結束日</label>
+  <label>結束日</label>
 </div>
 
 </div>
@@ -119,58 +94,51 @@ body {
 </div>
 
 </div>
-
+</div>
 </div>
 
-</div>
-
+<!-- JS -->
 <script>
 
 let table;
-let mode = "add"; // add / edit
+let mode = "add";
 
 $(document).ready(function () {
 
     table = $('#membersTable').DataTable({
-        pageLength: 5,
+        pageLength: 30,
         dom: 'rtip'
     });
 
-    // 搜尋
     $('#customSearch').on('keyup', function () {
         table.search(this.value).draw();
     });
 
-    // 選取 row
     $('#membersTable tbody').on('click', 'tr', function () {
-
         $('#membersTable tbody tr').removeClass('selected');
         $(this).addClass('selected');
-
     });
 
 });
 
 
-// ========== 新增 ==========
+// ===== 新增 =====
 $('#btnAdd').click(function () {
 
     mode = "add";
-
     clearForm();
-
     $('#memberModal').modal('show');
 
 });
 
 
-// ========== 修改 ==========
+// ===== 修改 =====
 $('#btnEdit').click(function () {
 
     let row = $('#membersTable tbody tr.selected');
 
     if(row.length === 0){
-        alert("請先選擇資料");
+        alert("請選擇資料");
         return;
     }
 
@@ -191,7 +159,7 @@ $('#btnEdit').click(function () {
 });
 
 
-// ========== 儲存 ==========
+// ===== 儲存 =====
 $('#saveBtn').click(function () {
 
     let payload = {
@@ -212,21 +180,16 @@ $('#saveBtn').click(function () {
     }
 
     fetch(url, {
-        method: method,
-        headers: {
-            "Content-Type": "application/json"
-        },
+        method,
+        headers: {"Content-Type":"application/json"},
         body: JSON.stringify(payload)
     })
-    .then(res => res.json())
-    .then(() => {
-        location.reload();
-    });
+    .then(() => location.reload());
 
 });
 
 
-// ========== 刪除 ==========
+// ===== 刪除 =====
 $('#btnDelete').click(function () {
 
     let row = $('#membersTable tbody tr.selected');
@@ -240,31 +203,21 @@ $('#btnDelete').click(function () {
 
     if(!confirm("確定刪除？")) return;
 
-    fetch("/members/" + id, {
-        method: "DELETE"
-    })
-    .then(() => location.reload());
+    fetch("/members/" + id, { method: "DELETE" })
+        .then(() => location.reload());
 
 });
 
-
-// ========== 清空 ==========
 function clearForm(){
     $('#m_id').val("");
     $('#m_name').val("");
     $('#m_phone').val("");
     $('#m_birth').val("");
-    $('#m_gender').val("男");
+    $('#m_gender').val("");
     $('#m_start').val("");
     $('#m_end').val("");
 }
 
-function formatDate(value){
-    if(!value) return '';
-    return value.split('T')[0];
-}
-
 </script>
 
-</body>
-</html>
+{% endblock %}
