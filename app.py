@@ -27,21 +27,33 @@ def get_members_api():
 # ===== 網頁版（重點）=====
 @app.route("/members", methods=["GET"])
 def members_page():
-    res = supabase.table("members").select("*").eq("is_delete",False).order("id").execute()
+    # 1. 從 Supabase 撈取未刪除的會員資料
+    res = supabase.table("members").select("*").eq("is_delete", False).execute()
     members = res.data
-    for m in members:
+
+    # 2. 定義安全排序規則：如果是純數字就依數字大小排；有文字的話就當作 0 排在最前面（防止轉換報錯）
+    def safe_int_sort(x):
+        val = x.get('member_id', '0')
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return 0  # 如果混入文字（如 "A101"），當作 0 處理，不讓系統崩潰
+
+    # 執行排序
+    sorted_members = sorted(members, key=safe_int_sort)
+
+    # 3. 合併處理日期格式（把 ISO 時間字串切成成 YYYY-MM-DD）
+    for m in sorted_members:
         if m.get("birth"):
             m["birth"] = m["birth"].split("T")[0]
-    for m in members:
         if m.get("start_at"):
             m["start_at"] = m["start_at"].split("T")[0]
-    for m in members:
         if m.get("end_at"):
             m["end_at"] = m["end_at"].split("T")[0]
             
     return render_template(
         "members.html",
-        members=members,
+        members=sorted_members,
         active="members"
     )
 
@@ -50,19 +62,44 @@ def members_page():
 @app.route("/members", methods=["POST"])
 def create_member():
     data = request.json
+    
+    # 1. 資料清洗：把所有的空字串 "" 轉成 None (等於資料庫的 NULL)
+    # 這樣就算有些欄位（如日期或諮詢師）沒填，資料庫也不會報錯
+    clean_data = {}
+    for key, value in data.items():
+        if value == "":
+            clean_data[key] = None
+        else:
+            clean_data[key] = value
 
-    return supabase.table("members").insert(data).execute().data
+    # 2. 執行新增並包裝回傳結果（避免 Flask 因為直接回傳 List 而報錯）
+    try:
+        res = supabase.table("members").insert(clean_data).execute()
+        return {"status": "success", "data": res.data}, 200
+    except Exception as e:
+        # 如果還是有錯，把錯誤訊息印在終端機，方便我們除錯
+        print("新增失敗:", e)
+        return {"status": "error", "message": str(e)}, 400
 
 # ===== 更新會員 =====
 @app.route("/members/<id>", methods=["PUT"])
 def update_member(id):
-
     data = request.json
 
-    return supabase.table("members") \
-        .update(data) \
-        .eq("id", id) \
-        .execute().data
+    # 一樣把空字串轉成 None
+    clean_data = {}
+    for key, value in data.items():
+        if value == "":
+            clean_data[key] = None
+        else:
+            clean_data[key] = value
+
+    try:
+        res = supabase.table("members").update(clean_data).eq("id", id).execute()
+        return {"status": "success", "data": res.data}, 200
+    except Exception as e:
+        print("修改失敗:", e)
+        return {"status": "error", "message": str(e)}, 400
 
 # ===== 刪除會員 =====
 @app.route("/members/<id>", methods=["DELETE"])

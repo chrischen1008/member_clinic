@@ -9,6 +9,8 @@
         body { background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
         .card-header-custom { background-color: #fff3cd; color: #856404; font-weight: bold; }
         .table input, .table select { border: 1px solid #ced4da; padding: 4px 8px; border-radius: 4px; width: 100%; }
+        /* 讓合併儲存格內的文字能垂直置中 */
+        .align-middle td { vertical-align: middle !important; }
     </style>
 </head>
 <body>
@@ -39,7 +41,7 @@
 
         <div class="card mb-4 shadow-sm" id="membership_card" style="display: none;">
             <div class="card-header card-header-custom">
-                會員贈送 三選一療程 (<span id="txt_membership_count">0</span>堂)
+                會員贈送 (<span id="txt_membership_count">0</span>堂)
             </div>
             <div class="card-body p-0">
                 <table class="table table-bordered mb-0 text-center align-middle">
@@ -54,14 +56,14 @@
                         </tr>
                     </thead>
                     <tbody id="membership_tbody">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
 
         <div class="card mb-4 shadow-sm" id="monthly_card" style="display: none;">
             <div class="card-header card-header-custom">
-                每月贈送 三選一療程 (<span id="txt_monthly_count">0</span>堂)
+                每月贈送 (<span id="txt_monthly_count">0</span>堂)
             </div>
             <div class="card-body p-0">
                 <table class="table table-bordered mb-0 text-center align-middle">
@@ -77,7 +79,7 @@
                         </tr>
                     </thead>
                     <tbody id="monthly_tbody">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -89,35 +91,69 @@
 </div>
 
 <script>
+// 全域變數，用來存放從 API 抓回來的下拉選單 HTML 字串
+let courseOptionsHTML = '<option value="">-- 請選擇 --</option>';
+
+// 網頁載入時，先呼叫 API 取得療程，再產生表格
+window.onload = async function() {
+    try {
+        const response = await fetch('/courses');
+        const coursesData = await response.json();
+        
+        // 清空並準備組合下拉選單 (這裡假設資料表中有 name 這個欄位來顯示名稱)
+        courseOptionsHTML = '<option value="">-- 選擇療程 --</option>';
+        
+        coursesData.forEach(course => {
+            // 使用 optgroup 將同一類別的療程包起來
+            // 注意：若你的資料庫欄位名稱不是 name，請將 course.name 替換成對應的欄位 (例如 course.title)
+            courseOptionsHTML += `<optgroup label="${course.name || '分類'}">`;
+            
+            if (course.items && course.items.length > 0) {
+                course.items.forEach(item => {
+                    // 注意：若你的資料庫欄位不是 name，請修改 item.name
+                    courseOptionsHTML += `<option value="${item.name}">${item.name}</option>`;
+                });
+            }
+            courseOptionsHTML += `</optgroup>`;
+        });
+        
+    } catch (error) {
+        console.error("載入療程清單失敗:", error);
+        courseOptionsHTML = '<option value="">-- 載入失敗，請重整 --</option>';
+    }
+
+    // 療程清單準備好後，呼叫產生表格的函數
+    generateTables();
+};
+
 function generateTables() {
-    // 取得輸入的數量
     const membershipCount = parseInt(document.getElementById('membership_count').value) || 0;
     const monthlyCount = parseInt(document.getElementById('monthly_count').value) || 0;
 
-    // 更新標題文字
     document.getElementById('txt_membership_count').innerText = membershipCount;
     document.getElementById('txt_monthly_count').innerText = monthlyCount;
 
-    // --- 1. 產生「會員贈送」表格列 ---
+    // --- 1. 產生「會員贈送」表格列 (包含上下合併儲存格) ---
     const membershipTbody = document.getElementById('membership_tbody');
-    membershipTbody.innerHTML = ''; // 清空舊資料
+    membershipTbody.innerHTML = ''; 
     if (membershipCount > 0) {
         document.getElementById('membership_card').style.display = 'block';
         for (let i = 0; i < membershipCount; i++) {
-            // 利用剩餘堂數倒數計時（如 6, 5, 4...）
             let displayRemaining = membershipCount - i; 
-            
             let tr = document.createElement('tr');
+            
+            let periodTd = '';
+            if (i === 0) {
+                periodTd = `<td rowspan="${membershipCount}"><input type="text" name="m_period" value="2026/04/23-2027/04/30"></td>`;
+            }
+
             tr.innerHTML = `
-                <td><input type="text" name="m_period[]" value="2026/04/23-2027/04/30"></td>
+                ${periodTd}
                 <td><input type="datetime-local" name="m_usage_time[]"></td>
                 <td><input type="text" name="m_user_name[]" value="張紘睿"></td>
                 <td>
                     <select name="m_treatment_type[]">
-                        <option value="">-- 請選擇 --</option>
-                        <option value="靜脈雷射">靜脈雷射</option>
-                        <option value="氫氧">氫氧</option>
-                        <option value="保肝點滴">保肝點滴</option>
+                        ${courseOptionsHTML}
                     </select>
                 </td>
                 <td><input type="number" name="m_remaining[]" value="${displayRemaining}"></td>
@@ -131,7 +167,7 @@ function generateTables() {
 
     // --- 2. 產生「每月贈送」表格列 ---
     const monthlyTbody = document.getElementById('monthly_tbody');
-    monthlyTbody.innerHTML = ''; // 清空舊資料
+    monthlyTbody.innerHTML = ''; 
     if (monthlyCount > 0) {
         document.getElementById('monthly_card').style.display = 'block';
         for (let i = 0; i < monthlyCount; i++) {
@@ -143,10 +179,7 @@ function generateTables() {
                 <td><input type="text" name="mo_user_name[]" value="張紘睿"></td>
                 <td>
                     <select name="mo_treatment_type[]">
-                        <option value="">-- 請選擇 --</option>
-                        <option value="靜脈雷射">靜脈雷射</option>
-                        <option value="氫氧">氫氧</option>
-                        <option value="保肝點滴">保肝點滴</option>
+                        ${courseOptionsHTML}
                     </select>
                 </td>
                 <td><input type="number" name="mo_remaining[]" value="1"></td>
@@ -158,16 +191,12 @@ function generateTables() {
         document.getElementById('monthly_card').style.display = 'none';
     }
 
-    // 顯示儲存按鈕
     if (membershipCount > 0 || monthlyCount > 0) {
         document.getElementById('submit_area').style.display = 'block';
     } else {
         document.getElementById('submit_area').style.display = 'none';
     }
 }
-
-// 網頁載入時自動執行一次預設值
-window.onload = generateTables;
 </script>
 </body>
 </html>

@@ -24,7 +24,7 @@
 <table id="membersTable" class="display table table-striped">
 <thead>
 <tr>
-    <th>ID</th>
+    <th>編號</th>
     <th>姓名</th>
     <th>電話</th>
     <th>生日</th>
@@ -37,7 +37,7 @@
 <tbody>
 {% for m in members %}
 <tr data-id="{{ m.id }}">
-    <td data-field="id">{{ m.id }}</td>
+    <td data-field="member_id">{{ m.member_id }}</td>
     <td data-field="name">{{ m.name }}</td>
     <td data-field="phone">{{ m.phone }}</td>
     <td data-field="birth">{{ m.birth }}</td>
@@ -62,6 +62,8 @@
 
 <div class="modal-body">
 <input type="hidden" id="m_id">
+
+<input class="form-control mb-2" id="m_member_id" placeholder="編號">
 
 <input class="form-control mb-2" id="m_name" placeholder="姓名">
 <input class="form-control mb-2" id="m_phone" placeholder="電話">
@@ -187,6 +189,7 @@ $('#btnEdit').click(function () {
 
     // 直接依據 data-field 屬性來撈取對應欄位的文字，欄位順序隨便換都不會壞
     $('#m_id').val(row.data('id'));
+    $('#m_member_id').val(row.find('td[data-field="member_id"]').text());
     $('#m_name').val(row.find('td[data-field="name"]').text());
     $('#m_phone').val(row.find('td[data-field="phone"]').text());
     $('#m_birth').val(row.find('td[data-field="birth"]').text());
@@ -205,11 +208,12 @@ $('#btnEdit').click(function () {
 
     $('#saveBtn').click(function () {
         let payload = {
+            member_id: $('#m_member_id').val(), // ⭐ 補上這一行：把編號加進 payload
             name: $('#m_name').val(),
             phone: $('#m_phone').val(),
             birth: $('#m_birth').val(),
             gender: $('#m_gender').val(),
-            consultant: $('#m_consultant').val(), // 將選擇的諮詢師加入 payload
+            consultant: $('#m_consultant').val(), 
             start_at: $('#m_start').val(),
             end_at: $('#m_end').val()
         };
@@ -245,7 +249,7 @@ $('#btnEdit').click(function () {
 });
 
 function clearForm(){
-    $('#m_id').val("");
+    $('#m_member_id').val("");
     $('#m_name').val("");
     $('#m_phone').val("");
     $('#m_birth').val("");
