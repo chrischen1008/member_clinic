@@ -5,21 +5,25 @@
 <meta charset="UTF-8">
 <title>{% block title %}會員管理系統{% endblock %}</title>
 
-<!-- Bootstrap 5 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<!-- DataTables CSS (新增) -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
 <style>
 body { margin: 0; }
 
+/* 側邊欄基礎樣式 (預設為隱藏/收折狀態，增加平滑動畫) */
 .sidebar {
-    width: 240px;
+    width: 0; /* 預設寬度為 0，隱藏起來 */
     height: 100vh;
     position: fixed;
+    top: 0;
+    left: 0;
     background: #1f2937;
-    padding-top: 20px;
+    padding-top: 60px; /* 預留頂部空間給漢堡按鈕 */
+    transition: all 0.3s ease; /* 讓展開收折過程有滑動動畫 */
+    z-index: 1000;
+    overflow-x: hidden; /* 防止內容在寬度為 0 時溢出 */
 }
 
 .sidebar a {
@@ -27,6 +31,7 @@ body { margin: 0; }
     color: #cbd5e1;
     padding: 12px 20px;
     text-decoration: none;
+    white-space: nowrap; /* 防止文字斷行 */
 }
 
 .sidebar a:hover {
@@ -34,46 +39,121 @@ body { margin: 0; }
     color: #fff;
 }
 
-/* ⭐ active 高亮 */
+/* active 高亮 */
 .sidebar a.active {
     background: #2563eb;
     color: white;
 }
 
+/* 主要內容區基礎樣式 */
 .content {
-    margin-left: 240px;
+    margin-left: 0; /* 預設沒有邊距 */
     padding: 20px;
+    transition: all 0.3s ease; /* 跟側邊欄同步變更 */
+    padding-top: 60px; /* 預留頂部空間給漢堡按鈕 */
 }
 
-.title {
-    color: white;
+/* 頂部導覽列 (用來放漢堡按鈕) */
+.top-nav {
+    height: 60px;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
     padding: 0 20px;
-    margin-bottom: 20px;
-    font-weight: bold;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1001; /* 確保在側邊欄上面 */
+    border-bottom: 1px solid #dee2e6;
 }
+
+/* 漢堡選單按鈕基礎樣式 (純 CSS 畫出三條橫線) */
+.toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;          /* 清除內邊距防止推擠 */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 24px;         /* 固定寬度 */
+    height: 18px;        /* 固定高度 */
+    z-index: 1002;
+    position: relative;  /* 讓子元素可以用絕對定位精準重疊 */
+}
+
+.toggle-btn span {
+    display: block;
+    height: 3px;
+    width: 100%;
+    background-color: #333;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    transform-origin: center; /* ⭐ 改為正中央旋轉，解決左邊被遮住的問題 */
+    position: absolute;       /* 改用絕對定位，讓轉成 X 時能完美交疊 */
+}
+/* 預設三條線的位置 (用絕對定位排好) */
+.toggle-btn span:nth-child(1) { top: 0; }
+.toggle-btn span:nth-child(2) { top: 7px; }
+.toggle-btn span:nth-child(3) { top: 14px; }
+/* ================= ⭐ 側邊欄展開後的樣式控制 ================= */
+/* 當 body 被加上 .sidebar-open 類別時 */
+body.sidebar-open .sidebar {
+    width: 240px; /* 側邊欄展開為 240px */
+}
+
+body.sidebar-open .content {
+    margin-left: 240px; /* 內容區向右遞補 */
+}
+
+/* ================= ⭐ 漢堡選單變成叉叉的 CSS ================= */
+/* 第一條線：移到中間並順時針轉 45 度 */
+.toggle-btn.active span:nth-child(1) {
+    top: 7px;
+    transform: rotate(45deg);
+}
+
+/* 第二條線：原地縮小並隱藏 */
+.toggle-btn.active span:nth-child(2) {
+    width: 0%;
+    opacity: 0;
+}
+
+/* 第三條線：移到中間並逆時針轉 45 度 */
+.toggle-btn.active span:nth-child(3) {
+    top: 7px;
+    transform: rotate(-45deg);
+}
+
 </style>
 
 </head>
 
 <body>
 
-<div class="sidebar">
-    <div class="title">會員管理系統</div>
+<div class="top-nav">
+    <button class="toggle-btn" id="sidebarToggle">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    <h5 class="ms-3 mb-0">會員管理系統</h5>
+</div>
 
+<div class="sidebar" id="mySidebar">
     <a href="/members" class="{% if active == 'members' %}active{% endif %}">
         會員基本資料
     </a>
-    <a href="/member_rights" class="{% if active == 'course_list' %}active{% endif %}">
+    <a href="/member_rights" class="{% if active == 'member_rights' %}active{% endif %}">
         會員內容
     </a>
     <a href="/course_list" class="{% if active == 'course_list' %}active{% endif %}">
         療程清單
     </a>
-    
     <a href="/orders" class="{% if active == 'orders' %}active{% endif %}">
         購買紀錄
     </a>
-
     <a href="/reports" class="{% if active == 'reports' %}active{% endif %}">
         報表
     </a>
@@ -83,17 +163,25 @@ body { margin: 0; }
     {% block content %}{% endblock %}
 </div>
 
-<!-- ================= 載入 JS 函式庫 (注意順序不可調換) ================= -->
-<!-- 1. jQuery 必須在最前面 -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-<!-- 2. Bootstrap 5 JS Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- 3. DataTables JS -->
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-<!-- 4. 給子網頁放 jQuery 程式碼的專用區塊 -->
+<script>
+$(document).ready(function() {
+    // 點擊漢堡按鈕時
+    $('#sidebarToggle').on('click', function() {
+        // 1. 切換按鈕本身的 .active 類別 (觸發叉叉動畫)
+        $(this).toggleClass('active');
+        
+        // 2. 切換 body 的 .sidebar-open 類別 (觸發側邊欄展開收折)
+        $('body').toggleClass('sidebar-open');
+    });
+});
+</script>
+
 {% block scripts %}{% endblock %}
 
 </body>
