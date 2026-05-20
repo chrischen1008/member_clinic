@@ -140,6 +140,36 @@ def update_item(id):
 def delete_item(id):
     return supabase.table("course_item").delete().eq("id", id).execute().data
 
+#=======諮詢師清單=============
+@app.route("/consultants", methods=["GET"])
+def get_consultants():
+
+    res = supabase.table("consultant_list") \
+        .select("*") \
+        .order("id", desc=True) \
+        .execute()
+
+    return jsonify(res.data)
+@app.route("/consultants", methods=["POST"])
+def add_consultant():
+
+    name = request.json["name"]
+
+    supabase.table("consultant_list") \
+        .insert({"name": name}) \
+        .execute()
+
+    return "ok"
+@app.route("/consultants/<int:id>", methods=["DELETE"])
+def delete_consultant(id):
+
+    supabase.table("consultant_list") \
+        .delete() \
+        .eq("id", id) \
+        .execute()
+
+    return "ok"
+
 @app.route("/orders")
 def orders():
     return render_template("orders.html", active="orders")

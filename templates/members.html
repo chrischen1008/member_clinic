@@ -96,10 +96,9 @@
 </div>
 </div>
 </div>
-
-<!-- JS -->
+{% endblock %}
+{% block scripts %}
 <script>
-
 let table;
 let mode = "add";
 
@@ -119,93 +118,69 @@ $(document).ready(function () {
         $(this).addClass('selected');
     });
 
-});
+    // ===== 所有按鈕事件都移入 ready 裡面確保抓得到 HTML 元素 =====
+    $('#btnAdd').click(function () {
+        mode = "add";
+        clearForm();
+        $('#memberModal').modal('show');
+    });
 
+    $('#btnEdit').click(function () {
+        let row = $('#membersTable tbody tr.selected');
+        if(row.length === 0){
+            alert("請選擇資料");
+            return;
+        }
+        mode = "edit";
+        let tds = row.find('td');
+        $('#m_id').val(row.data('id'));
+        $('#m_name').val($(tds[1]).text());
+        $('#m_phone').val($(tds[2]).text());
+        $('#m_birth').val($(tds[3]).text());
+        $('#m_gender').val($(tds[4]).text());
+        $('#m_start').val($(tds[5]).text());
+        $('#m_end').val($(tds[6]).text());
+        $('#memberModal').modal('show');
+    });
 
-// ===== 新增 =====
-$('#btnAdd').click(function () {
+    $('#saveBtn').click(function () {
+        let payload = {
+            name: $('#m_name').val(),
+            phone: $('#m_phone').val(),
+            birth: $('#m_birth').val(),
+            gender: $('#m_gender').val(),
+            start_at: $('#m_start').val(),
+            end_at: $('#m_end').val()
+        };
 
-    mode = "add";
-    clearForm();
-    $('#memberModal').modal('show');
+        let url = "/members";
+        let method = "POST";
 
-});
+        if(mode === "edit"){
+            url = "/members/" + $('#m_id').val();
+            method = "PUT";
+        }
 
-
-// ===== 修改 =====
-$('#btnEdit').click(function () {
-
-    let row = $('#membersTable tbody tr.selected');
-
-    if(row.length === 0){
-        alert("請選擇資料");
-        return;
-    }
-
-    mode = "edit";
-
-    let tds = row.find('td');
-
-    $('#m_id').val(row.data('id'));
-    $('#m_name').val($(tds[1]).text());
-    $('#m_phone').val($(tds[2]).text());
-    $('#m_birth').val($(tds[3]).text());
-    $('#m_gender').val($(tds[4]).text());
-    $('#m_start').val($(tds[5]).text());
-    $('#m_end').val($(tds[6]).text());
-
-    $('#memberModal').modal('show');
-
-});
-
-
-// ===== 儲存 =====
-$('#saveBtn').click(function () {
-
-    let payload = {
-        name: $('#m_name').val(),
-        phone: $('#m_phone').val(),
-        birth: $('#m_birth').val(),
-        gender: $('#m_gender').val(),
-        start_at: $('#m_start').val(),
-        end_at: $('#m_end').val()
-    };
-
-    let url = "/members";
-    let method = "POST";
-
-    if(mode === "edit"){
-        url = "/members/" + $('#m_id').val();
-        method = "PUT";
-    }
-
-    fetch(url, {
-        method,
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(payload)
-    })
-    .then(() => location.reload());
-
-});
-
-
-// ===== 刪除 =====
-$('#btnDelete').click(function () {
-
-    let row = $('#membersTable tbody tr.selected');
-
-    if(row.length === 0){
-        alert("請選擇資料");
-        return;
-    }
-
-    let id = row.data('id');
-
-    if(!confirm("確定刪除？")) return;
-
-    fetch("/members/" + id, { method: "DELETE" })
+        fetch(url, {
+            method,
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(payload)
+        })
         .then(() => location.reload());
+    });
 
+    $('#btnDelete').click(function () {
+        let row = $('#membersTable tbody tr.selected');
+        if(row.length === 0){
+            alert("請選擇資料");
+            return;
+        }
+        let id = row.data('id');
+        if(!confirm("確定刪除？")) return;
+
+        fetch("/members/" + id, { method: "DELETE" })
+            .then(() => location.reload());
+    });
 });
 
 function clearForm(){
@@ -217,7 +192,5 @@ function clearForm(){
     $('#m_start').val("");
     $('#m_end').val("");
 }
-
 </script>
-
 {% endblock %}
