@@ -6,18 +6,19 @@
 <h2>會員基本資料</h2>
 
 <!-- 工具列 -->
-<div class="mb-2">
-
-    <button class="btn btn-primary" id="btnAdd">新增</button>
-    <button class="btn btn-warning" id="btnEdit">修改</button>
-    <button class="btn btn-danger" id="btnDelete">刪除</button>
-
-    <input id="customSearch" class="form-control mt-2" placeholder="搜尋...">
-
+<div class="mb-2 d-flex justify-content-between align-items-start">
+    <div>
+        <button class="btn btn-primary" id="btnAdd">新增</button>
+        <button class="btn btn-warning" id="btnEdit">修改</button>
+        <button class="btn btn-danger" id="btnDelete">刪除</button>
+        <input id="customSearch" class="form-control mt-2" placeholder="搜尋...">
+    </div>
+    <div>
+        <button class="btn btn-info text-white" id="btnConsultantList">諮詢師清單</button>
+    </div>
 </div>
 
 <table id="membersTable" class="display table table-striped">
-
 <thead>
 <tr>
     <th>ID</th>
@@ -25,30 +26,28 @@
     <th>電話</th>
     <th>生日</th>
     <th>性別</th>
+    <th>諮詢師</th> <!-- 新增此欄位 -->
     <th>開始</th>
     <th>結束</th>
 </tr>
 </thead>
-
 <tbody>
-
 {% for m in members %}
 <tr data-id="{{ m.id }}">
-    <td>{{ m.id }}</td>
-    <td>{{ m.name }}</td>
-    <td>{{ m.phone }}</td>
-    <td>{{ m.birth }}</td>
-    <td>{{ m.gender }}</td>
-    <td>{{ m.start_at }}</td>
-    <td>{{ m.end_at }}</td>
+    <td data-field="id">{{ m.id }}</td>
+    <td data-field="name">{{ m.name }}</td>
+    <td data-field="phone">{{ m.phone }}</td>
+    <td data-field="birth">{{ m.birth }}</td>
+    <td data-field="gender">{{ m.gender }}</td>
+    <td data-field="consultant">{{ m.consultant }}</td> <!-- 諮詢師 -->
+    <td data-field="start_at">{{ m.start_at }}</td>     <!-- 開始日 -->
+    <td data-field="end_at">{{ m.end_at }}</td>         <!-- 結束日 -->
 </tr>
 {% endfor %}
-
 </tbody>
-
 </table>
 
-<!-- Modal（原封不動保留） -->
+<!-- Modal（會員資料） -->
 <div class="modal fade" id="memberModal">
 <div class="modal-dialog">
 <div class="modal-content">
@@ -59,7 +58,6 @@
 </div>
 
 <div class="modal-body">
-
 <input type="hidden" id="m_id">
 
 <input class="form-control mb-2" id="m_name" placeholder="姓名">
@@ -76,6 +74,12 @@
     <option value="女">女</option>
 </select>
 
+<!-- 新增：諮詢師下拉選單 -->
+<select class="form-control mb-2" id="m_consultant">
+    <option value="" disabled selected>請選擇諮詢師</option>
+    <!-- 這裡的選項會由 JavaScript 動態填入 -->
+</select>
+
 <div class="form-floating mb-2">
   <input type="date" class="form-control" id="m_start">
   <label>開始日</label>
@@ -85,7 +89,6 @@
   <input type="date" class="form-control" id="m_end">
   <label>結束日</label>
 </div>
-
 </div>
 
 <div class="modal-footer">
@@ -96,6 +99,33 @@
 </div>
 </div>
 </div>
+
+<!-- ================= 諮詢師清單 Modal ================= -->
+<div class="modal fade" id="consultantModal">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">諮詢師清單</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                
+                <!-- 新增區塊 -->
+                <div class="input-group mb-3">
+                    <input type="text" id="c_name" class="form-control" placeholder="輸入諮詢師姓名">
+                    <button class="btn btn-success" id="btnAddConsultant">新增</button>
+                </div>
+
+                <!-- 列表區塊 -->
+                <ul class="list-group" id="consultantList">
+                    <!-- 這裡會由 JS 動態填入 -->
+                </ul>
+
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 {% block scripts %}
 <script>
@@ -117,31 +147,58 @@ $(document).ready(function () {
         $('#membersTable tbody tr').removeClass('selected');
         $(this).addClass('selected');
     });
-
+    // ================= 新增一個載入諮詢師下拉選單的函式 =================
+    // 傳入 selectedName 是為了在「修改」時，自動選取該諮詢師
+    function loadConsultantOptions(selectedName = "") {
+        fetch('/consultants')
+            .then(res => res.json())
+            .then(data => {
+                let html = '<option value="" disabled selected>請選擇諮詢師</option>';
+                data.forEach(c => {
+                    // 如果是修改模式，且名稱吻合，就加上 selected 屬性
+                    let isSelected = (c.name === selectedName) ? 'selected' : '';
+                    html += `<option value="${c.name}" ${isSelected}>${c.name}</option>`;
+                });
+                $('#m_consultant').html(html);
+            })
+            .catch(err => console.error("無法取得諮詢師清單:", err));
+    }
     // ===== 所有按鈕事件都移入 ready 裡面確保抓得到 HTML 元素 =====
     $('#btnAdd').click(function () {
         mode = "add";
         clearForm();
+        loadConsultantOptions(); // 載入諮詢師選項，不預設選取
         $('#memberModal').modal('show');
     });
 
-    $('#btnEdit').click(function () {
-        let row = $('#membersTable tbody tr.selected');
-        if(row.length === 0){
-            alert("請選擇資料");
-            return;
-        }
-        mode = "edit";
-        let tds = row.find('td');
-        $('#m_id').val(row.data('id'));
-        $('#m_name').val($(tds[1]).text());
-        $('#m_phone').val($(tds[2]).text());
-        $('#m_birth').val($(tds[3]).text());
-        $('#m_gender').val($(tds[4]).text());
-        $('#m_start').val($(tds[5]).text());
-        $('#m_end').val($(tds[6]).text());
-        $('#memberModal').modal('show');
-    });
+// ========== 修改 ==========
+$('#btnEdit').click(function () {
+    let row = $('#membersTable tbody tr.selected');
+
+    if(row.length === 0){
+        alert("請選擇資料");
+        return;
+    }
+
+    mode = "edit";
+
+    // 直接依據 data-field 屬性來撈取對應欄位的文字，欄位順序隨便換都不會壞
+    $('#m_id').val(row.data('id'));
+    $('#m_name').val(row.find('td[data-field="name"]').text());
+    $('#m_phone').val(row.find('td[data-field="phone"]').text());
+    $('#m_birth').val(row.find('td[data-field="birth"]').text());
+    $('#m_gender').val(row.find('td[data-field="gender"]').text());
+    
+    // 處理諮詢師下拉選單
+    let consultantName = row.find('td[data-field="consultant"]').text();
+    loadConsultantOptions(consultantName); 
+
+    // 日期欄位
+    $('#m_start').val(row.find('td[data-field="start_at"]').text());
+    $('#m_end').val(row.find('td[data-field="end_at"]').text());
+
+    $('#memberModal').modal('show');
+});
 
     $('#saveBtn').click(function () {
         let payload = {
@@ -149,6 +206,7 @@ $(document).ready(function () {
             phone: $('#m_phone').val(),
             birth: $('#m_birth').val(),
             gender: $('#m_gender').val(),
+            consultant: $('#m_consultant').val(), // 將選擇的諮詢師加入 payload
             start_at: $('#m_start').val(),
             end_at: $('#m_end').val()
         };
@@ -189,8 +247,86 @@ function clearForm(){
     $('#m_phone').val("");
     $('#m_birth').val("");
     $('#m_gender').val("");
+    $('#m_consultant').val(""); // 清空諮詢師
     $('#m_start').val("");
     $('#m_end').val("");
 }
+
+// ========== 諮詢師清單 CRUD 功能 ==========
+
+// 1. 開啟 Modal 並載入清單
+$('#btnConsultantList').click(function () {
+    fetchConsultants();
+    $('#consultantModal').modal('show');
+});
+
+// 2. 讀取 (Read) 清單
+function fetchConsultants() {
+    // 假設後端 API 路徑為 /consultants
+    fetch('/consultants')
+        .then(res => res.json())
+        .then(data => {
+            let html = '';
+            data.forEach(c => {
+                html += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>${c.name}</span>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary me-1" onclick="editConsultant(${c.id}, '${c.name}')">改</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteConsultant(${c.id})">刪</button>
+                        </div>
+                    </li>
+                `;
+            });
+            $('#consultantList').html(html);
+        })
+        .catch(err => console.error("無法取得諮詢師清單:", err));
+}
+
+// 3. 新增 (Create) 諮詢師
+$('#btnAddConsultant').click(function () {
+    let name = $('#c_name').val().trim();
+    if (!name) {
+        alert('請輸入姓名');
+        return;
+    }
+
+    fetch('/consultants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name })
+    })
+    .then(() => {
+        $('#c_name').val(''); // 清空輸入框
+        fetchConsultants();   // 重新載入清單
+    });
+});
+
+// 4. 修改 (Update) 諮詢師
+// 因為要讓變數在 global 可用，若放在 $(document).ready 內，需將其綁定到 window，或直接宣告在外面
+window.editConsultant = function(id, oldName) {
+    let newName = prompt("請輸入新的諮詢師姓名：", oldName);
+    
+    // 如果有輸入且名稱有變動
+    if (newName && newName.trim() !== "" && newName !== oldName) {
+        fetch('/consultants/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName.trim() })
+        })
+        .then(() => fetchConsultants());
+    }
+};
+
+// 5. 刪除 (Delete) 諮詢師
+window.deleteConsultant = function(id) {
+    if (!confirm("確定要刪除這位諮詢師嗎？")) return;
+
+    fetch('/consultants/' + id, {
+        method: 'DELETE'
+    })
+    .then(() => fetchConsultants());
+};
+
 </script>
 {% endblock %}

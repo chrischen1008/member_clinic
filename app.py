@@ -146,7 +146,7 @@ def get_consultants():
 
     res = supabase.table("consultant_list") \
         .select("*") \
-        .order("id", desc=True) \
+        .order("id") \
         .execute()
 
     return jsonify(res.data)
@@ -165,6 +165,19 @@ def delete_consultant(id):
 
     supabase.table("consultant_list") \
         .delete() \
+        .eq("id", id) \
+        .execute()
+
+    return "ok"
+
+@app.route("/consultants/<int:id>", methods=["PUT"])
+def update_consultant(id):
+    # 取得前端傳來的修改後姓名
+    name = request.json["name"]
+
+    # 更新資料庫
+    supabase.table("consultant_list") \
+        .update({"name": name}) \
         .eq("id", id) \
         .execute()
 
