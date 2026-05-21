@@ -69,7 +69,7 @@
 
 <!-- 生日 -->
 <div class="form-floating mb-2">
-  <input type="text" class="form-control js-datepicker" id="m_birth" placeholder=" " autocomplete="off">
+  <input type="text" class="form-control" id="m_birth" placeholder=" " autocomplete="off" readonly style="cursor: pointer; background-color: #fff;">
   <label for="m_birth">生日</label>
 </div>
 
@@ -125,6 +125,81 @@
     </div>
 </div>
 
+<!-- 生日民國西元日期選擇器 -->
+<style>
+    #birthModal .modal-content { border-radius: 12px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+    #birthModal .modal-header { border-bottom: none; justify-content: center; padding-bottom: 0; }
+    
+    /* 調整選單樣式，確保完美置中 */
+    #birthModal select { 
+        display: inline-block;
+        /* 設定固定寬度 */
+        width: 100px;
+        height: 45px;
+        
+        /* 移除預設的邊界與樣式影響 */
+        appearance: none; 
+        -webkit-appearance: none;
+        
+        /* 強制文字在選單內置中 */
+        text-align: center;
+        text-align-last: center;
+        
+        border: 2px solid #ced4da;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin: 0 5px; /* 年月日之間的微小間距 */
+        background-color: #fff;
+    }
+
+    /* 確保年/月/日文字與選單垂直置中 */
+    .d-flex.justify-content-center {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #555;
+    }
+
+    /* 設定各自的最小寬度，讓民國年不被擠壓 */
+    #b_year { min-width: 110px; }
+    #b_month, #b_day { min-width: 80px; }
+
+    #birthModal .btn-confirm { background-color: #4caea3; color: white; border-radius: 5px; padding: 10px 0; border: none; }
+    #birthModal .btn-cancel { background-color: #e0e0e0; color: #555; border-radius: 5px; padding: 10px 0; border: none; }
+</style>
+<div class="modal fade" id="birthModal" tabindex="-1" style="z-index: 1060;"> <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">選擇出生日期</h5>
+            </div>
+            
+            <ul class="nav nav-tabs justify-content-center" role="tablist">
+                <li class="nav-item" role="presentation" style="width: 50%;">
+                    <button class="nav-link active w-100" id="tab-roc" data-type="roc">民國年</button>
+                </li>
+                <li class="nav-item" role="presentation" style="width: 50%;">
+                    <button class="nav-link w-100" id="tab-ce" data-type="ce">西元年</button>
+                </li>
+            </ul>
+
+            <div class="modal-body text-center pt-0">
+                <div class="d-flex justify-content-center align-items-center mb-3">
+                    <select id="b_year" class="shadow-none"></select> 年
+                    <select id="b_month" class="shadow-none"></select> 月
+                    <select id="b_day" class="shadow-none"></select> 日
+                </div>
+                <div id="b_preview" class="mb-4 fw-bold" style="color: #3eb4a8;"></div>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <button type="button" class="btn w-50 btn-cancel" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn w-50 btn-confirm" id="btnConfirmBirth">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 {% block scripts %}
 <script>
@@ -132,7 +207,51 @@ let table;
 let mode = "add";
 
 $(document).ready(function () {
+    // ================= 統一處理：帶入日期並設定選單 =================
+function populateBirthModal(dateStr) {
+    let year, month, day;
+    
+    // 1. 解析日期 (YYYY-MM-DD)
+    if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        let parts = dateStr.split('-');
+        year = parseInt(parts[0]);
+        month = parseInt(parts[1]);
+        day = parseInt(parts[2]);
+    } else {
+        // 預設日期 (如果沒有資料，給予預設值)
+        let now = new Date();
+        year = now.getFullYear();
+        month = now.getMonth() + 1;
+        day = now.getDate();
+    }
 
+    // 2. 判斷要顯示哪種格式 (預設民國)
+    // 如果年份 > 1911，預設切換到民國頁籤，否則切換到西元
+    if (year > 1911) {
+        birthYearType = 'roc';
+        $('#tab-roc').addClass('active');
+        $('#tab-ce').removeClass('active');
+    } else {
+        birthYearType = 'ce';
+        $('#tab-ce').addClass('active');
+        $('#tab-roc').removeClass('active');
+    }
+
+    // 3. 關鍵順序：先重新渲染年份選單，再賦值
+    renderBirthYears();
+    renderBirthMonths();
+    
+    // 設定數值
+    let targetYear = (birthYearType === 'roc') ? (year - 1911) : year;
+    $('#b_year').val(targetYear);
+    $('#b_month').val(month);
+    
+    // 4. 必須先重新渲染天數選單，再設定天數 (避免天數選單沒對應到)
+    renderBirthDays(); 
+    $('#b_day').val(day);
+    
+    updateBirthPreview();
+}
     table = $('#membersTable').DataTable({
         pageLength: 30,
         dom: 'rtip'
@@ -194,7 +313,8 @@ $(document).ready(function () {
         let startVal = row.find('td[data-field="start_at"]').text().trim();
         let endVal   = row.find('td[data-field="end_at"]').text().trim();
 
-        $('#m_birth').datepicker('update', birthVal);
+        // $('#m_birth').datepicker('update', birthVal);
+        $('#m_birth').val(birthVal);
         $('#m_start').datepicker('update', startVal);
         $('#m_end').datepicker('update', endVal);
 
@@ -253,7 +373,150 @@ $(document).ready(function () {
             $('#m_end').datepicker('update', autoNextYear);
         }
     });
+
+    // ================= 生日雙切換 Modal 邏輯 =================
+    let birthYearType = 'roc'; // 預設民國
+    const currentYearCE = new Date().getFullYear();
+
+    // 產生年份
+    function renderBirthYears() {
+        let options = '';
+        if (birthYearType === 'roc') {
+            for (let i = currentYearCE - 1911; i >= 1; i--) options += `<option value="${i}">${i}</option>`;
+        } else {
+            for (let i = currentYearCE; i >= 1912; i--) options += `<option value="${i}">${i}</option>`;
+        }
+        $('#b_year').html(options);
+    }
+
+    // 產生月份
+    function renderBirthMonths() {
+        let options = '';
+        for (let i = 1; i <= 12; i++) options += `<option value="${i}">${i}</option>`;
+        $('#b_month').html(options);
+    }
+
+    // 產生日期 (自動計算閏年與大小月)
+    function renderBirthDays() {
+        let y = parseInt($('#b_year').val()) || (birthYearType === 'roc' ? 70 : 1981);
+        let m = parseInt($('#b_month').val()) || 1;
+        let selectedDay = $('#b_day').val(); 
+        
+        let actualYear = birthYearType === 'roc' ? y + 1911 : y;
+        let daysInMonth = new Date(actualYear, m, 0).getDate();
+        
+        let options = '';
+        for (let i = 1; i <= daysInMonth; i++) options += `<option value="${i}">${i}</option>`;
+        $('#b_day').html(options);
+
+        // 防呆：如果原本選31號，換到2月時自動跳回最後一天
+        if (selectedDay && selectedDay <= daysInMonth) $('#b_day').val(selectedDay);
+    }
+
+    // 更新預覽文字
+    function updateBirthPreview() {
+        let y = $('#b_year').val();
+        let m = $('#b_month').val().padStart(2, '0');
+        let d = $('#b_day').val().padStart(2, '0');
+        let text = birthYearType === 'roc' ? `民國 ${y}/${m}/${d}` : `西元 ${y}/${m}/${d}`;
+        $('#b_preview').text(text);
+    }
+
+    // 綁定連動變化
+    $('#b_year, #b_month').on('change', function() {
+        renderBirthDays();
+        updateBirthPreview();
+    });
+    $('#b_day').on('change', updateBirthPreview);
+
+    // 頁籤切換邏輯
+// ================= 頁籤切換邏輯 (修正版) =================
+$('#birthModal .nav-link').click(function() {
+    // 1. 取得目前選單的數值
+    let currentYear = parseInt($('#b_year').val());
+    let currentMonth = $('#b_month').val();
+    let currentDay = $('#b_day').val();
     
+    // 2. 切換狀態
+    let newType = $(this).data('type');
+    if (newType === birthYearType) return; // 如果點同一個頁籤就不做動作
+    
+    // 3. 計算轉換後的年份
+    let targetYear;
+    if (birthYearType === 'roc' && newType === 'ce') {
+        targetYear = currentYear + 1911; // 民國轉西元
+    } else if (birthYearType === 'ce' && newType === 'roc') {
+        targetYear = currentYear - 1911; // 西元轉民國
+    } else {
+        targetYear = currentYear;
+    }
+    
+    // 4. 更新類型並重新渲染下拉選單
+    birthYearType = newType;
+    $('#birthModal .nav-link').removeClass('active');
+    $(this).addClass('active');
+    
+    renderBirthYears(); // 重新產生選單
+    
+    // 5. 將轉換後的年份與原有的月份日期填回
+    $('#b_year').val(targetYear);
+    $('#b_month').val(currentMonth);
+    
+    renderBirthDays(); // 必須先產生日期選單，才能設定日期
+    $('#b_day').val(currentDay);
+    
+    updateBirthPreview(); // 更新底下的文字顯示
+});
+
+    // 點擊原輸入框：開啟 Modal 並帶入目前數值
+    $('#m_birth').on('click', function(e) {
+        e.preventDefault();
+        
+        renderBirthMonths();
+        let currentVal = $(this).val(); // 格式應為 YYYY-MM-DD
+        // 直接呼叫處理函式，確保邏輯統一
+        populateBirthModal(currentVal);
+        if (currentVal && currentVal.length >= 8) {
+            let parts = currentVal.split('-');
+            let y = parseInt(parts[0]);
+            let m = parseInt(parts[1]);
+            let d = parseInt(parts[2]);
+
+            // 預設切換到民國
+            $('#tab-roc').click(); 
+            setTimeout(() => {
+                $('#b_year').val(y - 1911);
+                $('#b_month').val(m);
+                renderBirthDays();
+                $('#b_day').val(d);
+                updateBirthPreview();
+            }, 10);
+        } else {
+            // 沒有資料時，預設顯示 民國70年1月1日
+            $('#tab-roc').click();
+            setTimeout(() => {
+                $('#b_year').val(70);
+                $('#b_month').val(1);
+                renderBirthDays();
+                $('#b_day').val(1);
+                updateBirthPreview();
+            }, 10);
+        }
+        
+        $('#birthModal').modal('show');
+    });
+
+    // 點擊確定按鈕：將結果寫回 input
+    $('#btnConfirmBirth').click(function() {
+        let y = parseInt($('#b_year').val());
+        let m = $('#b_month').val().padStart(2, '0');
+        let d = $('#b_day').val().padStart(2, '0');
+        
+        let finalYear = birthYearType === 'roc' ? y + 1911 : y; // 存入資料庫一律轉西元
+        
+        $('#m_birth').val(`${finalYear}-${m}-${d}`).trigger('input'); // 觸發動畫
+        $('#birthModal').modal('hide');
+    });
 });
 
 // ========== 清空表單 ==========
@@ -265,7 +528,8 @@ function clearForm(){
     $('#m_consultant').val(""); 
     
     // ⭐ 清空日期：直接塞入空字串 update 即可清空並重置日曆狀態
-    $('#m_birth').datepicker('update', '');
+    // $('#m_birth').datepicker('update', '');
+    $('#m_birth').val(""); 
     // $('#m_start').datepicker('update', '');
     // $('#m_end').datepicker('update', '');
     // ⭐ 產生「今天」與「一年後」的日期物件
