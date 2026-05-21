@@ -220,6 +220,53 @@ def update_consultant(id):
 
     return "ok"
 
+#========會員內容===========
+
+@app.route("/member_rights") # 假設這是你的會員權益頁面路由
+def member_rights():
+    member_id = request.args.get('member_id')
+    
+    # 1. 先找出該會員所有的 gift_header 紀錄
+    gift_header = supabase.table("gift_header").select("*").eq("member_id", member_id).execute().data or []
+
+    # 2. 收集這些 header 的 id 變成一個列表 [1, 2, 3...]
+    header_ids = [h["id"] for h in gift_header]
+
+    # 3. 用 .in_() 去撈出所有 gift_id 在 header_ids 裡面的 body 資料
+    if header_ids:
+        gift_body = supabase.table("gift_body").select("*").in_("gift_id", header_ids).order("id").execute().data or []
+    else:
+        gift_body = []
+
+    # 4. 經典的巢狀資料組合：用 gift_header 的 id 去配對 gift_body 的 gift_id
+    for h in gift_header:
+        h["bodies"] = [b for b in gift_body if b["gift_id"] == h["id"]]
+
+    # 現在你的 gift_header 結構裡，每個項目都會有一個 "bodies" 列表了！
+    print(gift_header)
+
+    # ================= 新增這段 =================
+    # 4. 抓取所有的課程資料 (假設你的資料表叫做 courses)
+    # 這裡請確認你的 Supabase 裡面有沒有 "courses" 這個資料表
+    courses = supabase.table("course").select("*").execute().data or []
+    course_item = supabase.table("course_item").select("*").execute().data or []
+    print(course_item)
+    # ============================================
+    member_data = supabase.table("members").select("*").eq("id", member_id).execute().data
+    print(member_data)
+    if member_data:
+        member = member_data[0]
+        # 手動截取日期 (如果欄位不為空且長度夠長)
+        for field in ['birth', 'start_at', 'end_at']:
+            if member.get(field):
+                # 取前 10 個字元 (YYYY-MM-DD)
+                member[field] = str(member[field])[:10]
+    else:
+        member = {}
+    # 這裡順便把抓出來的 courses 傳進模板
+    return render_template("member_rights.html", gift_header=gift_header, gift_body=gift_body,courses=courses,course_item=course_item,member=member)
+
+
 @app.route("/orders")
 def orders():
     return render_template("orders.html", active="orders")
