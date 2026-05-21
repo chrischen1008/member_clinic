@@ -243,6 +243,17 @@ $(document).ready(function () {
         fetch("/members/" + id, { method: "DELETE" })
             .then(() => location.reload());
     });
+
+    // ⭐ 當「開始日」被重新選擇時，自動把「結束日」改為新選擇日期的一年後
+    $('#m_start').on('changeDate', function(e) {
+        // e.date 是套件回傳的當前選中日期物件
+        if (e.date) {
+            let autoNextYear = new Date(e.date);
+            autoNextYear.setFullYear(autoNextYear.getFullYear() + 1);
+            $('#m_end').datepicker('update', autoNextYear);
+        }
+    });
+    
 });
 
 // ========== 清空表單 ==========
@@ -255,8 +266,16 @@ function clearForm(){
     
     // ⭐ 清空日期：直接塞入空字串 update 即可清空並重置日曆狀態
     $('#m_birth').datepicker('update', '');
-    $('#m_start').datepicker('update', '');
-    $('#m_end').datepicker('update', '');
+    // $('#m_start').datepicker('update', '');
+    // $('#m_end').datepicker('update', '');
+    // ⭐ 產生「今天」與「一年後」的日期物件
+    let today = new Date();
+    let nextYear = new Date();
+    nextYear.setFullYear(today.getFullYear() + 1);
+
+    // ⭐ 直接用 update 方法塞入 Date 物件，套件會自動幫你格式化！
+    $('#m_start').datepicker('update', today);
+    $('#m_end').datepicker('update', nextYear);
 }
 
 // ========== 諮詢師清單 CRUD 功能 ==========
