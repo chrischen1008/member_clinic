@@ -134,7 +134,9 @@ const giftHeaderData = JSON.parse('{{ gift_header | tojson | safe }}');
 const coursesData = JSON.parse('{{ courses | default([]) | tojson | safe }}');
 const coursesItemData = JSON.parse('{{ course_item | default([]) | tojson | safe }}');
 console.log(coursesItemData);
-
+// 用單引號包住 Jinja2 語法騙過編輯器，再用 Number() 轉成真正的數字
+const defaultQtyFromBackend = Number('{{ default_qty | default(0) }}');
+console.log("defaultQtyFromBackend:"+defaultQtyFromBackend);
 $(document).ready(function() {
     // 初始化渲染表格
     renderGiftTables();
@@ -154,22 +156,31 @@ function renderGiftTables() {
     let totalMembershipCount = 0;
     let totalMonthlyCount = 0;
 
+    // 🔥【新增這段】：如果後端傳來空陣列，手動偽造一筆預設資料塞進去
+    if (giftHeaderData.length === 0) {
+        giftHeaderData.push({
+            id: null,                       // 因為是新增的，所以沒有 ID
+            gift_qty: defaultQtyFromBackend,// 使用後端帶過來的 6
+            course_name: "三選一療程",      // 你的預設療程名稱
+            gift_type: "membership",        // 預設分類（看你要去 membership 還是 monthly）
+            bodies: []                      // 空的內容
+        });
+    }
+
+    // 接下來的 logic 就能完全正常運作了！
     giftHeaderData.forEach(header => {
-        const qty = header.gift_qty || 0;
-        const bodies = header.bodies || [];
+        const qty = (header.gift_qty && header.gift_qty > 0) ? header.gift_qty : defaultQtyFromBackend;
+        header.gift_qty = qty; // 強制寫回，確保 rowspan 正常
         
-        // 區分類型：根據你的資料庫欄位調整 (例如 header.gift_type)
+        const bodies = header.bodies || [];
         const type = header.gift_type || 'membership'; 
 
         if (type === 'membership') {
             totalMembershipCount += qty;
-            
-            // 如果 qty 為 0，至少也給一列空的供填寫，維持版面
             const loopCount = qty > 0 ? qty : 1; 
             
             for (let i = 0; i < loopCount; i++) {
                 const body = bodies[i] || null;
-                // isFirstRow 控制這列是否要畫出合併的 rowspan 儲存格
                 const isFirstRow = (i === 0); 
                 const rowHtml = generateMembershipRowHtml(header, body, i, isFirstRow, loopCount);
                 $('#membership_tbody').append(rowHtml);
@@ -189,7 +200,6 @@ function renderGiftTables() {
     $('#txt_membership_count').text(totalMembershipCount);
     $('#txt_monthly_count').text(totalMonthlyCount);
 }
-
 /**
  * 建立「會員贈送」單列 HTML（支援跨列合併與雙 Datepicker）
  */

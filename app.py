@@ -244,7 +244,37 @@ def member_rights():
 
     # 現在你的 gift_header 結構裡，每個項目都會有一個 "bodies" 列表了！
     print(gift_header)
+    # 先檢查 gift_header 是不是空的，有資料才執行
+    # 1. 預設先找出 course_name（防呆：如果 header 有資料就抓 header 的，沒有就用寫死的）
+    course_name = gift_header[0]["course_name"] if gift_header else "三選一療程"
 
+    # 2. 判斷是否需要去撈資料庫（情況一：header 是空的，或是 情況二：數量為 0）
+    if not gift_header or gift_header[0]["gift_qty"] == 0:
+        
+        # 去 Supabase 查 default_qty
+        res_data = supabase.table("course").select("default_qty").eq("course_info", course_name).execute().data
+        
+        if res_data:
+            default_qty = res_data[0]["default_qty"]
+            
+            # 情況 A：如果 gift_header 有資料（只是數量為 0），就把值寫回 gift_header
+            if gift_header:
+                gift_header[0]["gift_qty"] = default_qty
+                gift_qty = default_qty
+            # 情況 B：如果 gift_header 本來就是空的，就把值賦予給變數
+            else:
+                gift_qty = default_qty
+                
+            print(f"成功取得預設數量: {gift_qty}")
+        else:
+            print("資料庫中找不到該療程的預設數量")
+            gift_qty = 0  # 查不到資料時的保險預設值
+
+    else:
+        # 3. 如果 header 有資料且數量不為 0，就直接沿用原本的數量
+        gift_qty = gift_header[0]["gift_qty"]
+
+    print(f"最終的 gift_qty: {gift_qty}")
     # ================= 新增這段 =================
     # 4. 抓取所有的課程資料 (假設你的資料表叫做 courses)
     # 這裡請確認你的 Supabase 裡面有沒有 "courses" 這個資料表
@@ -264,7 +294,7 @@ def member_rights():
     else:
         member = {}
     # 這裡順便把抓出來的 courses 傳進模板
-    return render_template("member_rights.html", gift_header=gift_header, gift_body=gift_body,courses=courses,course_item=course_item,member=member)
+    return render_template("member_rights.html", gift_header=gift_header, gift_body=gift_body,courses=courses,course_item=course_item,member=member,default_qty=gift_qty)
 
 @app.route("/introduction_img")
 def image():
