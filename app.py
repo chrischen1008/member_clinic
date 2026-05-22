@@ -294,7 +294,7 @@ def member_rights():
     else:
         member = {}
     # 這裡順便把抓出來的 courses 傳進模板
-    return render_template("member_rights.html", gift_header=gift_header, gift_body=gift_body,courses=courses,course_item=course_item,member=member,default_qty=gift_qty)
+    return render_template("member_rights.html", gift_header=gift_header, gift_body=gift_body,courses=courses,course_item=course_item,member=member,default_qty=gift_qty,member_id=member_id)
 
 @app.route("/introduction_img")
 def image():
