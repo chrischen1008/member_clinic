@@ -13,7 +13,9 @@
 </style>
 
 <div class="container py-5">
-    <!-- 會員基本資料區塊 -->
+    <!-- 上方的按鈕區-->
+    <button class="btn btn-outline-success" id="btnMemberRights">會員內容</button>
+    <button class="btn btn-outline-dark" id="btnOrders">購買紀錄</button>
 <!-- 會員基本資料卡片 -->
 <div class="card mb-4 shadow-sm">
     <div class="card-header" style="background-color: #e9ecef; font-weight: bold;">
@@ -52,7 +54,7 @@
 </div>
     
     <form action="/save_batch" method="POST">
-        <input type="hidden" name="member_name" value="張紘睿">
+        <input type="hidden" name="member_name" value="">
 
         <!-- 會員贈送表格 -->
         <div class="card mb-4 shadow-sm" id="membership_card">
@@ -139,6 +141,7 @@ $(document).ready(function() {
     
     // 初始化動態產生的 Datepicker（如果你是用 bootstrap-datepicker）
     initDynamicDatepickers();
+
 });
 
 /**

@@ -3,10 +3,10 @@
 
 {% block content %}
 
+<!-- 引入 Bootstrap 5 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
-
 .course-row {
     cursor: pointer;
 }
@@ -45,7 +45,6 @@
 .item-name {
     flex: 1;
 }
-
 </style>
 
 <div class="container mt-3">
@@ -57,11 +56,11 @@
 </button>
 
 <table class="table table-bordered table-hover">
-
 <thead class="table-dark">
 <tr>
     <th width="40"></th>
     <th>療程名稱</th>
+    <th width="150">預設堂數</th>
     <th width="250">操作</th>
 </tr>
 </thead>
@@ -72,9 +71,47 @@
 
 </div>
 
+<!-- 統一的療程輸入彈窗 (Modal) -->
+<div class="modal fade" id="courseModal" tabindex="-1" aria-labelledby="courseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="courseModalLabel">療程資料</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 隱藏欄位，用來判斷是修改(有id)還是新增(無id) -->
+                <input type="hidden" id="modalCourseId">
+                
+                <div class="mb-3">
+                    <label for="modalCourseInfo" class="form-label">療程名稱</label>
+                    <input type="text" class="form-control" id="modalCourseInfo" placeholder="請輸入療程名稱">
+                </div>
+                <div class="mb-3">
+                    <label for="modalDefaultQty" class="form-label">預設堂數</label>
+                    <input type="number" class="form-control" id="modalDefaultQty" min="0" value="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveCourseBtn">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入 jQuery 與 Bootstrap 5 JS Bundle -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+// 初始化 Bootstrap Modal 實例
+let courseModal;
+
+$(document).ready(function () {
+    courseModal = new bootstrap.Modal(document.getElementById('courseModal'));
+    load();
+});
 
 // ================= load =================
 function load() {
@@ -85,10 +122,10 @@ function load() {
 
 // ================= render =================
 function render(courses) {
-
     let html = "";
 
     courses.forEach(c => {
+        let defaultQty = (c.default_qty !== undefined && c.default_qty !== null) ? c.default_qty : 0;
 
         html += `
         <tr class="course-row" data-id="${c.id}">
@@ -96,6 +133,10 @@ function render(courses) {
 
             <td class="course-title">
                 ${c.course_info}
+            </td>
+            
+            <td class="course-qty">
+                ${defaultQty}
             </td>
 
             <td class="actions">
@@ -106,7 +147,7 @@ function render(courses) {
         </tr>
 
         <tr class="detail-row" style="display:none;">
-            <td colspan="3">
+            <td colspan="4">
                 <div class="detail-box">
                     ${renderItems(c.items)}
                 </div>
@@ -120,16 +161,12 @@ function render(courses) {
 
 // ================= items =================
 function renderItems(items) {
-
     let html = "";
 
     if (items && items.length > 0) {
-
         items.forEach(i => {
-
             html += `
             <div class="item-row" data-id="${i.id}">
-
                 <span class="item-name">
                     ${i.name}
                 </span>
@@ -138,11 +175,9 @@ function renderItems(items) {
                     <button class="btn btn-sm btn-success edit-item">修改</button>
                     <button class="btn btn-sm btn-outline-danger del-item">刪除</button>
                 </div>
-
             </div>
             `;
         });
-
     } else {
         html += `<div class="text-muted">沒有項目</div>`;
     }
@@ -152,7 +187,6 @@ function renderItems(items) {
 
 // ================= toggle（無動畫） =================
 $(document).on("click", ".toggle-icon", function () {
-
     let row = $(this).closest("tr");
     let detail = row.next(".detail-row");
 
@@ -166,27 +200,62 @@ $(document).on("click", ".toggle-icon", function () {
     }
 });
 
-// ================= course edit =================
-$(document).on("click", ".edit-course", function () {
+// ================= 開啟新增療程畫面 =================
+$("#addCourseBtn").click(function () {
+    $("#courseModalLabel").text("新增療程");
+    $("#modalCourseId").val("");        // 清空 ID 表示新增
+    $("#modalCourseInfo").val("");      // 清空輸入框
+    $("#modalDefaultQty").val("0");     // 預設為 0
+    
+    courseModal.show();
+});
 
+// ================= 開啟修改療程畫面 =================
+$(document).on("click", ".edit-course", function () {
     let row = $(this).closest("tr.course-row");
     let id = row.data("id");
 
     let oldName = row.find(".course-title").text().trim();
+    let oldQty = row.find(".course-qty").text().trim();
 
-    let newName = prompt("修改療程名稱", oldName);
-    if (!newName) return;
+    $("#courseModalLabel").text("修改療程");
+    $("#modalCourseId").val(id);         // 帶入 ID 表示修改
+    $("#modalCourseInfo").val(oldName);   // 帶入舊名稱
+    $("#modalDefaultQty").val(oldQty);    // 帶入舊堂數
 
-    fetch(`/course/${id}`, {
-        method: "PUT",
+    courseModal.show();
+});
+
+// ================= 統一儲存事件 (新增 / 修改) =================
+$("#saveCourseBtn").click(function () {
+    let id = $("#modalCourseId").val();
+    let name = $("#modalCourseInfo").val().trim();
+    let qty = $("#modalDefaultQty").val();
+
+    if (!name) {
+        alert("請輸入療程名稱");
+        return;
+    }
+
+    // 依據是否有 id 來決定 API 路徑與 Method
+    let url = id ? `/course/${id}` : "/course";
+    let method = id ? "PUT" : "POST";
+
+    fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course_info: newName })
-    }).then(() => load());
+        body: JSON.stringify({ 
+            course_info: name,
+            default_qty: parseInt(qty) || 0 
+        })
+    }).then(() => {
+        courseModal.hide(); // 儲存成功後關閉彈窗
+        load();             // 重新載入列表
+    });
 });
 
 // ================= delete course =================
 $(document).on("click", ".del-course", function () {
-
     let id = $(this).closest("tr.course-row").data("id");
 
     if (!confirm("確定刪除？")) return;
@@ -198,7 +267,6 @@ $(document).on("click", ".del-course", function () {
 
 // ================= add item =================
 $(document).on("click", ".add-item-btn", function () {
-
     let courseId = $(this).closest("tr.course-row").data("id");
 
     let name = prompt("輸入項目名稱");
@@ -213,7 +281,6 @@ $(document).on("click", ".add-item-btn", function () {
 
 // ================= item edit =================
 $(document).on("click", ".edit-item", function () {
-
     let row = $(this).closest(".item-row");
     let id = row.data("id");
 
@@ -231,32 +298,14 @@ $(document).on("click", ".edit-item", function () {
 
 // ================= item delete =================
 $(document).on("click", ".del-item", function () {
-
     let id = $(this).closest(".item-row").data("id");
+
+    if (!confirm("確定刪除此項目？")) return;
 
     fetch(`/course_item/${id}`, {
         method: "DELETE"
     }).then(() => load());
 });
-
-// ================= add course =================
-$("#addCourseBtn").click(function () {
-
-    let name = prompt("輸入療程名稱");
-    if (!name) return;
-
-    fetch("/course", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course_info: name })
-    }).then(() => load());
-});
-
-// ================= init =================
-$(document).ready(function () {
-    load();
-});
-
 </script>
 
 {% endblock %}

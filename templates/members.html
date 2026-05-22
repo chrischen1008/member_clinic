@@ -271,7 +271,17 @@ $(document).ready(function () {
         // 為當前點擊的行加上選取與高亮
         $(this).addClass('selected table-active');
     });
-
+    // ========== 新增雙擊表格列跳轉邏輯 ==========
+    $('#membersTable tbody').on('dblclick', 'tr', function () {
+        let selectedMemberId = $(this).data('id');
+        
+        if (selectedMemberId) {
+            // 直接跳轉到會籍權益管理頁面，並帶上 member_id
+            window.location.href = `/member_rights?member_id=${selectedMemberId}`;
+        } else {
+            alert("無法取得該會員的 ID！");
+        }
+    });
     function loadConsultantOptions(selectedName = "") {
         fetch('/consultants')
             .then(res => res.json())
