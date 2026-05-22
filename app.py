@@ -266,6 +266,10 @@ def member_rights():
     # 這裡順便把抓出來的 courses 傳進模板
     return render_template("member_rights.html", gift_header=gift_header, gift_body=gift_body,courses=courses,course_item=course_item,member=member)
 
+@app.route("/introduction_img")
+def image():
+
+    return render_template("introduction_img.html", active='introduction_img')
 
 @app.route("/orders")
 def orders():

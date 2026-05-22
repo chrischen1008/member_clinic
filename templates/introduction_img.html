@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block title %}年度健康管理會員{% endblock %}
+
+{% block content %}
+<style>
+    /* 圖片外殼容器：負責將內容置中 */
+    .img-container {
+        display: flex;
+        justify-content: center; /* 水平置中 */
+        align-items: center;     /* 垂直置中 */
+        width: 100%;             /* 寬度撐滿 */
+        box-sizing: border-box;
+        padding: 40px 20px;      /* 上下左右留一點舒適的間距 */
+    }
+
+    /* 圖片本身：負責依實際比例自適應縮放 */
+    .img-container img {
+        max-width: 100%;         /* 手機版：寬度不超出螢幕 */
+        height: auto;            /* 高度依據原本比例自動縮放，絕不變形 */
+        display: block;          /* 移除圖片底部微小空白 */
+        border-radius: 8px;      /* 幫圖片加上圓角，看起來更精緻 */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* 加上淡淡的陰影效果 */
+        
+        /* 電腦版限制：避免圖片在超大螢幕上被無限放大而失真 */
+        /* 你可以依據圖片實際大小，將 800px 改為你想要的寬度 */
+        max-width: 800px; 
+    }
+</style>
+
+<!-- 圖片展示區塊 -->
+<div class="img-container">
+    <!-- 使用 Flask 的 url_for 自動指引至 static/images/001.jpg -->
+    <img src="{{ url_for('static', filename='images/introduction.jpg') }}" alt="年度健康管理會員" loading="lazy">
+</div>
+{% endblock %}
