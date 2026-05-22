@@ -296,6 +296,63 @@ def member_rights():
     # 這裡順便把抓出來的 courses 傳進模板
     return render_template("member_rights.html", gift_header=gift_header, gift_body=gift_body,courses=courses,course_item=course_item,member=member,default_qty=gift_qty,member_id=member_id)
 
+
+#========會員同行者=======
+@app.route("/member_party", methods=["GET"])
+def get_member_party():
+    member_id = request.args.get('member_id')
+    if not member_id:
+        return jsonify({"error": "缺少 member_id 參數"}), 400
+
+    # 撈出該會員底下的所有同行者名單
+    res = supabase.table("member_party") \
+        .select("*") \
+        .eq("member_id", member_id) \
+        .order("id") \
+        .execute()
+        
+    return jsonify(res.data)
+
+@app.route("/member_party", methods=["POST"])
+def add_member_party():
+    # 接收前端傳來的 name 與 member_id
+    name = request.json.get("name")
+    member_id = request.json.get("member_id")
+
+    # 寫入資料庫
+    supabase.table("member_party") \
+        .insert({
+            "name": name, 
+            "member_id": member_id
+        }) \
+        .execute()
+        
+    return "ok"
+
+@app.route("/member_party/<int:id>", methods=["DELETE"])
+def delete_member_party(id):
+    # 根據資料表的主鍵 (id) 來刪除特定的一筆同行者紀錄
+    supabase.table("member_party") \
+        .delete() \
+        .eq("id", id) \
+        .execute()
+        
+    return "ok"
+
+@app.route("/member_party/<int:id>", methods=["PUT"])
+def update_member_party(id):
+    # 接收前端傳來的新姓名
+    name = request.json.get("name")
+
+    # 根據資料表的主鍵 (id) 來更新該筆紀錄的 name
+    supabase.table("member_party") \
+        .update({"name": name}) \
+        .eq("id", id) \
+        .execute()
+        
+    return "ok"
+
+
 @app.route("/introduction_img")
 def image():
 

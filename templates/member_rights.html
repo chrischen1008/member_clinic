@@ -16,10 +16,7 @@
     <!-- 上方的按鈕區-->
     <button class="btn btn-outline-success" id="btnMemberRights">會員內容</button>
     <button class="btn btn-outline-dark" id="btnOrders">購買紀錄</button>
-
-    <div>
-        <button class="btn btn-info text-white" id="btnMemberParty">諮詢師清單</button>
-    </div>
+    <button class="btn btn-info text-white" id="btnMemberParty">同行者清單</button>
 <!-- 會員基本資料卡片 -->
 <div class="card mb-4 shadow-sm">
     <div class="card-header" style="background-color: #e9ecef; font-weight: bold;">
@@ -129,6 +126,25 @@
         </div>
     </form>
 </div>
+
+<!-- ================= 同行者 / 家人清單 Modal ================= -->
+<div class="modal fade" id="memberPartyModal">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">同行者清單</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group mb-3">
+                    <input type="text" id="name" class="form-control" placeholder="輸入同行者姓名" autocomplete="off">
+                    <button class="btn btn-success" id="btnAddMemberParty">新增</button>
+                </div>
+                <ul class="list-group" id="memberPartyList"></ul>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -142,6 +158,10 @@ console.log(coursesItemData);
 const defaultQtyFromBackend = Number('{{ default_qty | default(0) }}');
 console.log("defaultQtyFromBackend:"+defaultQtyFromBackend);
 $(document).ready(function() {
+    //【新增】：頁面一載入，就先去撈當前會員的同行者資料
+    if (currentMemberId) {
+        fetchMemberParty(currentMemberId);
+    }
     // 初始化渲染表格
     renderGiftTables();
     
@@ -149,7 +169,7 @@ $(document).ready(function() {
     initDynamicDatepickers();
 
 });
-
+const currentMemberName = "{{ member.name }}"; // 從 Jinja2 取得
 /**
  * 主要渲染邏輯
  */
@@ -214,17 +234,15 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
     const startAt = header ? (header.start_at || '') : '';
     const endAt = header ? (header.end_at || '') : '';
     const usedAt = body ? (body.used_at || '') : '';
-    const userName = body ? (body.user_name || '') : '';
+    const userName = body ? (body.user_name || '') : ''; // 這裡會帶入已存在的姓名
     const courseName = body ? (body.course_name || '') : '';
     const remaining = body ? body.remaining_qty : (header ? (header.gift_qty - index) : '');
     const remark = body ? (body.remark || '') : '';
 
     let rowspanHtml = '';
-    // 只有該組的第一列需要產生這個大儲存格
     if (isFirstRow) {
         rowspanHtml = `
             <td rowspan="${totalRows}" class="align-middle bg-light">
-                <!-- 隱藏欄位：綁定 header ID -->
                 <input type="hidden" name="m_header_id[]" value="${headerId}">
                 <div class="d-flex flex-column gap-1">
                     <div class="input-group input-group-sm">
@@ -244,11 +262,14 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
         <tr>
             ${rowspanHtml}
             <td>
-                <!-- 每列仍要綁定自己的 body ID -->
                 <input type="hidden" name="m_body_id[]" value="${bodyId}">
                 <input type="text" class="js-datepicker" name="m_used_at[]" value="${usedAt}" autocomplete="off">
             </td>
-            <td><input type="text" name="m_user_name[]" value="${userName}" placeholder="姓名"></td>
+            <td>
+                <select name="m_user_name[]" style="width: 100%; border: 1px solid #ced4da; padding: 4px 8px; border-radius: 4px;">
+                    ${getPartyOptionsHtml(currentMemberName, userName)}
+                </select>
+            </td>
             <td>
                 <select name="m_course_name[]">
                     ${getCourseOptionsHtml(courseName)}
@@ -317,7 +338,23 @@ function getCourseOptionsHtml(selectedCourseName) {
     });
     return options;
 }
-
+/**
+ * 產生同行者與會員本人下拉選單
+ * @param {string} memberName - 會員本人的姓名
+ * @param {string} selectedUserName - 目前資料庫儲存的選中使用者
+ */
+function getPartyOptionsHtml(memberName, selectedUserName) {
+    // 預設選項：包含會員本人
+    let options = `<option value="${memberName}">${memberName}</option>`;
+    
+    // 再遍歷同行者清單
+    memberPartyData.forEach(party => {
+        const isSelected = (selectedUserName && party.name === selectedUserName) ? 'selected' : '';
+        options += `<option value="${party.name}" ${isSelected}>${party.name}</option>`;
+    });
+    
+    return options;
+}
 /**
  * 初始化動態元件的 Datepicker 綁定
  */
@@ -418,5 +455,95 @@ function updateCounter(type) {
         $('#txt_monthly_count').text($('#monthly_tbody tr').length);
     }
 }
+
+let currentMemberId = "{{ member_id }}"; // 確保有抓到當前的會員 ID
+
+// 點擊按鈕打開同行者畫面
+$('#btnMemberParty').click(function () {
+    // 1. 先去後端抓取該會員的同行者清單
+    fetchMemberParty(currentMemberId);
+    
+    // 2. 顯示剛剛建立好的同行者 Modal 畫面
+    $('#memberPartyModal').modal('show');
+});
+
+// 【新增】宣告一個全域變數，用來存放同行者名單
+let memberPartyData = []; 
+
+function fetchMemberParty(memberId) {
+    if (!memberId) return;
+
+    fetch(`/member_party?member_id=${memberId}`)
+        .then(res => res.json())
+        .then(data => {
+            memberPartyData = data; // 🔥【關鍵】：把抓到的資料存到全域變數
+            
+            // 底下原本的 Modal 渲染邏輯保持不變...
+            let html = '';
+            data.forEach(c => {
+                html += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>${c.name}</span>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary me-1" onclick="editMemberParty(${c.id}, '${c.name}')">改</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMemberParty(${c.id})">刪</button>
+                        </div>
+                    </li>
+                `;
+            });
+            $('#memberPartyList').html(html);
+            
+            // 🔥【關鍵】：當名單有變動時，順便重新渲染一次主表格，讓表格的下拉選單同步更新
+            if (typeof renderGiftTables === 'function') {
+                renderGiftTables();
+            }
+        });
+}
+
+// 新增同行者/家人
+$('#btnAddMemberParty').click(function () {
+    let nameInput = $('#name').val().trim(); // 準確抓取 id="name" 的輸入框
+    if (!nameInput) { alert('請輸入姓名'); return; }
+
+    fetch('/member_party', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nameInput, member_id: currentMemberId })
+    })
+    .then(() => {
+        $('#name').val(''); // 清空 id="name" 的輸入框
+        
+        // 稍微延遲 100 毫秒，確保資料庫寫入完成後再重新撈取，達成即時更新
+        setTimeout(() => {
+            fetchMemberParty(currentMemberId); 
+        }, 100);
+    })
+    .catch(err => console.error("新增失敗:", err));
+});
+
+// 修改同行者/家人
+window.editMemberParty = function(id, oldName) {
+    let newName = prompt("請輸入新的名稱：", oldName);
+    if (newName && newName.trim() !== "" && newName !== oldName) {
+        fetch('/member_party/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName.trim() })
+        })
+        .then(() => {
+            setTimeout(() => { fetchMemberParty(currentMemberId); }, 100);
+        });
+    }
+};
+
+// 刪除同行者/家人
+window.deleteMemberParty = function(id) {
+    if (!confirm("確定要刪除這筆資料嗎？")) return;
+    fetch('/member_party/' + id, { method: 'DELETE' })
+    .then(() => {
+        setTimeout(() => { fetchMemberParty(currentMemberId); }, 100);
+    });
+};
+
 </script>
 {% endblock %}
