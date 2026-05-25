@@ -32,7 +32,7 @@
                         <th style="width: 15%;">電話</th>
                         <th style="width: 10%;">生日</th>
                         <th style="width: 8%;">性別</th>
-                        <th style="width: 12%;">顧問</th>
+                        <th style="width: 12%;">諮詢師</th>
                         <th style="width: 15%;">會籍開始</th>
                         <th style="width: 15%;">會籍截止</th>
                     </tr>
@@ -170,6 +170,8 @@ $(document).ready(function() {
 
 });
 const currentMemberName = "{{ member.name }}"; // 從 Jinja2 取得
+const defaultStartAt = "{{ member.start_at | default('') }}"; // 🔥【新增】預設會籍開始日期
+const defaultEndAt = "{{ member.end_at | default('') }}";
 /**
  * 主要渲染邏輯
  */
@@ -223,6 +225,9 @@ function renderGiftTables() {
 
     $('#txt_membership_count').text(totalMembershipCount);
     $('#txt_monthly_count').text(totalMonthlyCount);
+
+    //【新增這行】：每次重新畫完表格，一律重新啟動 Datepicker
+    initDynamicDatepickers();
 }
 /**
  * 建立「會員贈送」單列 HTML（支援跨列合併與雙 Datepicker）
@@ -231,8 +236,9 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
     const headerId = header ? header.id : '';
     const bodyId = body ? body.id : '';
     
-    const startAt = header ? (header.start_at || '') : '';
-    const endAt = header ? (header.end_at || '') : '';
+// 🔥【修改這兩行】：如果 header 有帶日期就用 header 的，沒有的話就預設帶入會籍起止
+    const startAt = (header && header.start_at) ? header.start_at : defaultStartAt;
+    const endAt = (header && header.end_at) ? header.end_at : defaultEndAt;
     const usedAt = body ? (body.used_at || '') : '';
     const userName = body ? (body.user_name || '') : ''; // 這裡會帶入已存在的姓名
     const courseName = body ? (body.course_name || '') : '';
@@ -275,7 +281,8 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
                     ${getCourseOptionsHtml(courseName)}
                 </select>
             </td>
-            <td><input type="number" name="m_remaining_qty[]" value="${remaining}"></td>
+            // value="${remaining}"
+            <td><input type="number" name="m_remaining_qty[]" min="0"></td>
             <td><input type="text" name="m_remark[]" value="${remark}" placeholder="備註"></td>
             <td>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMembershipRow(this, '${headerId}')">刪除</button>
@@ -290,8 +297,9 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
 function generateMonthlyRowHtml(header, body, index) {
     const headerId = header ? header.id : '';
     const bodyId = body ? body.id : '';
-    const startAt = header ? (header.start_at || '') : '';
-    const endAt = header ? (header.end_at || '') : '';
+// 🔥【修改這兩行】：如果 header 有帶日期就用 header 的，沒有的話就預設帶入會籍起止
+    const startAt = (header && header.start_at) ? header.start_at : defaultStartAt;
+    const endAt = (header && header.end_at) ? header.end_at : defaultEndAt;
     
     const usedAt = body ? (body.used_at || '') : '';
     const userName = body ? (body.user_name || '') : '';
@@ -344,10 +352,15 @@ function getCourseOptionsHtml(selectedCourseName) {
  * @param {string} selectedUserName - 目前資料庫儲存的選中使用者
  */
 function getPartyOptionsHtml(memberName, selectedUserName) {
-    // 預設選項：包含會員本人
-    let options = `<option value="${memberName}">${memberName}</option>`;
+    // 1. 預設顯示空白（不選狀態），如果沒有傳入 selectedUserName，就預設選這個
+    let isNoneSelected = !selectedUserName ? 'selected' : '';
+    let options = `<option value="" ${isNoneSelected}>請選擇</option>`; // 如果你想完全空白，可以把 "請選擇" 刪掉留空
     
-    // 再遍歷同行者清單
+    // 2. 加入會員本人（需要判斷目前資料是否選中他）
+    let isMemberSelected = (selectedUserName === memberName) ? 'selected' : '';
+    options += `<option value="${memberName}" ${isMemberSelected}>${memberName}</option>`;
+    
+    // 3. 再遍歷同行者清單
     memberPartyData.forEach(party => {
         const isSelected = (selectedUserName && party.name === selectedUserName) ? 'selected' : '';
         options += `<option value="${party.name}" ${isSelected}>${party.name}</option>`;
@@ -359,13 +372,12 @@ function getPartyOptionsHtml(memberName, selectedUserName) {
  * 初始化動態元件的 Datepicker 綁定
  */
 function initDynamicDatepickers() {
-    // 💡 假設你沿用原有的 .js-datepicker 或者 bootstrap datepicker 
-    // 如果你有套用特定的格式設定（例如 format: 'yyyy-mm-dd'），請在此處加上
     if ($.fn.datepicker) {
         $('.js-datepicker').datepicker({
             format: 'yyyy-mm-dd',
             autoclose: true,
-            todayHighlight: true
+            todayHighlight: true, // 🔥【關鍵】：讓日曆中的「今天」變成黃色/藍色高亮，一眼就能看到
+            defaultViewDate: 'today' // 🔥【關鍵】：如果輸入框是空的，點開日曆時預設切換到本月與今天
         });
     }
 }
@@ -476,9 +488,8 @@ function fetchMemberParty(memberId) {
     fetch(`/member_party?member_id=${memberId}`)
         .then(res => res.json())
         .then(data => {
-            memberPartyData = data; // 🔥【關鍵】：把抓到的資料存到全域變數
+            memberPartyData = data; 
             
-            // 底下原本的 Modal 渲染邏輯保持不變...
             let html = '';
             data.forEach(c => {
                 html += `
@@ -493,13 +504,13 @@ function fetchMemberParty(memberId) {
             });
             $('#memberPartyList').html(html);
             
-            // 🔥【關鍵】：當名單有變動時，順便重新渲染一次主表格，讓表格的下拉選單同步更新
             if (typeof renderGiftTables === 'function') {
                 renderGiftTables();
+                // 🔥【新增這行】：確保因為同行者名單更新而重繪表格後，日曆套件會重新綁定
+                initDynamicDatepickers(); 
             }
         });
 }
-
 // 新增同行者/家人
 $('#btnAddMemberParty').click(function () {
     let nameInput = $('#name').val().trim(); // 準確抓取 id="name" 的輸入框
