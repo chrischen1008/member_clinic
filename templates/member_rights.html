@@ -294,11 +294,11 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
                 <div class="d-flex flex-column gap-1">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">起</span>
-                        <input type="text" class="form-control js-datepicker" name="m_start_at[]" value="${startAt}" autocomplete="off">
+                        <input type="date" class="form-control js-datepicker" name="m_start_at[]" value="${startAt}" autocomplete="off">
                     </div>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">止</span>
-                        <input type="text" class="form-control js-datepicker" name="m_end_at[]" value="${endAt}" autocomplete="off">
+                        <input type="date" class="form-control js-datepicker" name="m_end_at[]" value="${endAt}" autocomplete="off">
                     </div>
                 </div>
             </td>
@@ -316,7 +316,7 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
             </td>
 
             <td>
-                <input type="text" class="form-control js-datepicker" name="m_used_at[]" value="${usedAt}" autocomplete="off">
+                <input type="date" class="form-control js-datepicker" name="m_used_at[]" value="${usedAt}" autocomplete="off">
             </td>
             <td>
                 <select class="form-select" name="m_user_name[]">
@@ -424,7 +424,25 @@ function getPartyOptionsHtml(memberName, selectedUserName) {
 }
 
 function initDynamicDatepickers() {
-    if ($.fn.datepicker) {
+    if (!$.fn.datepicker) return;
+
+    // 💡 偵測目前的裝置是否為行動裝置 (手機或平板)
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (isMobile) {
+        // 如果是手機/iPad：銷毀或不啟用外掛，並移除樣式，讓 iOS 原生 UI 接手
+        $('.js-datepicker').datepicker('destroy'); 
+        // 選擇性調整：iOS 原生 date 欄位有時候寬度會縮小，可以強制它撐滿
+        $('.js-datepicker').css('width', '100%');
+    } else {
+        // 如果是電腦：維持你原本的 Bootstrap Datepicker 外掛
+        $('.js-datepicker').each(function() {
+            // 先確保將 type 改回 text，因為某些舊版電腦瀏覽器對 type="date" 的 UI 支援很醜
+            if ($(this).attr('type') === 'date') {
+                $(this).attr('type', 'text');
+            }
+        });
+
         $('.js-datepicker').datepicker({
             format: 'yyyy-mm-dd',
             autoclose: true,

@@ -58,33 +58,39 @@ body {
 ========================= */
 
 .sidebar {
-    width: 240px;
+    /* 1. 改為由內容決定寬度，並設定最小與最大寬度限制 */
+    width: fit-content;
+    min-width: 200px;  /* 基礎寬度，字少時不至於縮太小 */
+    max-width: 300px;  /* 限制最大寬度，避免字太多撐得太誇張 */
+    
     background: #1f2937;
     transition: all 0.3s ease;
     overflow-x: hidden;
     flex-shrink: 0;
 }
 
+/* 當點擊漢堡按鈕折疊時，寬度歸零 */
 .sidebar.collapsed {
     width: 0;
+    min-width: 0; /* 記得把 min-width 也歸零，否則會折疊不起來 */
 }
 
 .sidebar a {
     display: block;
     color: #cbd5e1;
-    padding: 12px 20px;
+    padding: 12px 24px; /* 微調左右 padding，讓文字與邊緣有呼吸空間 */
     text-decoration: none;
-    white-space: nowrap;
-}
-
-.sidebar a:hover {
-    background: #374151;
-    color: #fff;
+    
+    /* 2. 關鍵：保持文字不換行，才能正確把寬度撐開 */
+    white-space: nowrap; 
 }
 
 .sidebar a.active {
-    background: #2563eb;
+    background: #2563eb; /* 藍色背景 */
     color: white;
+    font-weight: bold;
+    border-left: 4px solid #60a5fa; /* 左側亮藍色邊條，讓選取狀態更醒目 */
+    padding-left: 16px; /* 稍微縮排以平衡邊條寬度 */
 }
 
 /* =========================
@@ -225,21 +231,34 @@ body {
 
 <script>
 $(document).ready(function() {
-    // 側邊欄切換
+    // 1. 側邊欄切換（你原本的程式碼）
     $('#sidebarToggle').on('click', function() {
         $(this).toggleClass('active');
         $('#mySidebar').toggleClass('collapsed');
     });
 
-    // ⭐ 4. 全域自動初始化所有日期輸入框
+    // 2. 自動偵測網址並高亮側邊欄選單
+    var currentPath = window.location.pathname; // 取得目前的網址路徑，例如 "/members"
+    
+    $('#mySidebar a').each(function() {
+        var menuHref = $(this).attr('href'); // 取得選單的 href 屬性
+        
+        // 檢查目前的網址是否包含或等於該選單的 href
+        if (currentPath === menuHref) {
+            $(this).addClass('active');
+        } else {
+            $(this).removeClass('active'); // 確保其他沒有匹配到的不會亮起
+        }
+    });
+
+    // 3. Datepicker 初始化（你原本的程式碼）
     $('.js-datepicker').datepicker({
         format: 'yyyy-mm-dd',
         language: 'zh-TW',
         autoclose: true,
         todayHighlight: true,
-        orientation: "bottom auto" // 讓日曆自動往下長，避免超出螢幕頂端
+        orientation: "bottom auto"
     }).on('changeDate', function() {
-        // 當選擇日期後，主動觸發 input 事件，讓 Bootstrap 的 Floating Label 順暢縮小浮起
         $(this).trigger('input');
     });
 });
