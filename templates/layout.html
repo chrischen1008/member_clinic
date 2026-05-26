@@ -14,20 +14,59 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/css/bootstrap-datepicker.min.css">
 
 <style>
-body { margin: 0; }
+* {
+    box-sizing: border-box;
+}
 
-/* 側邊欄基礎樣式 */
-.sidebar {
-    width: 0; 
-    height: 100vh;
+body {
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* =========================
+   Top Nav
+========================= */
+
+.top-nav {
+    height: 60px;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid #dee2e6;
+
     position: fixed;
     top: 0;
     left: 0;
+    right: 0;
+
+    z-index: 1001;
+}
+
+/* =========================
+   主版型
+========================= */
+
+.main-layout {
+    display: flex;
+    margin-top: 60px;
+    min-height: calc(100vh - 60px);
+}
+
+/* =========================
+   Sidebar
+========================= */
+
+.sidebar {
+    width: 240px;
     background: #1f2937;
-    padding-top: 60px; 
-    transition: all 0.3s ease; 
-    z-index: 1000;
-    overflow-x: hidden; 
+    transition: all 0.3s ease;
+    overflow-x: hidden;
+    flex-shrink: 0;
+}
+
+.sidebar.collapsed {
+    width: 0;
 }
 
 .sidebar a {
@@ -35,7 +74,7 @@ body { margin: 0; }
     color: #cbd5e1;
     padding: 12px 20px;
     text-decoration: none;
-    white-space: nowrap; 
+    white-space: nowrap;
 }
 
 .sidebar a:hover {
@@ -48,39 +87,35 @@ body { margin: 0; }
     color: white;
 }
 
+/* =========================
+   Content
+========================= */
+
 .content {
-    margin-left: 0; 
+    flex: 1;
+    min-width: 0;
     padding: 20px;
-    transition: all 0.3s ease; 
-    padding-top: 60px; 
+    overflow-x: auto;
 }
 
-.top-nav {
-    height: 60px;
-    background-color: #f8f9fa;
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1001; 
-    border-bottom: 1px solid #dee2e6;
-}
+/* =========================
+   漢堡按鈕
+========================= */
 
 .toggle-btn {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 0;          
+    padding: 0;
+
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    width: 24px;         
-    height: 18px;        
-    z-index: 1002;
-    position: relative;  
+
+    width: 24px;
+    height: 18px;
+
+    position: relative;
 }
 
 .toggle-btn span {
@@ -89,51 +124,68 @@ body { margin: 0; }
     width: 100%;
     background-color: #333;
     border-radius: 2px;
+
     transition: all 0.3s ease;
-    transform-origin: center; 
-    position: absolute;       
+    transform-origin: center;
+    position: absolute;
 }
-.toggle-btn span:nth-child(1) { top: 0; }
-.toggle-btn span:nth-child(2) { top: 7px; }
-.toggle-btn span:nth-child(3) { top: 14px; }
 
-body.sidebar-open .sidebar { width: 240px; }
-body.sidebar-open .content { margin-left: 240px; }
+.toggle-btn span:nth-child(1) {
+    top: 0;
+}
 
-.toggle-btn.active span:nth-child(1) { top: 7px; transform: rotate(45deg); }
-.toggle-btn.active span:nth-child(2) { width: 0%; opacity: 0; }
-.toggle-btn.active span:nth-child(3) { top: 7px; transform: rotate(-45deg); }
+.toggle-btn span:nth-child(2) {
+    top: 7px;
+}
 
-/* ⭐ 2. 解決 Bootstrap Datepicker 被 Modal 蓋住的問題 */
+.toggle-btn span:nth-child(3) {
+    top: 14px;
+}
+
+.toggle-btn.active span:nth-child(1) {
+    top: 7px;
+    transform: rotate(45deg);
+}
+
+.toggle-btn.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.toggle-btn.active span:nth-child(3) {
+    top: 7px;
+    transform: rotate(-45deg);
+}
+
+/* =========================
+   Datepicker
+========================= */
+
 .datepicker {
     z-index: 9999 !important;
 }
-/* ========================================================= */
-/* ⭐ Bootstrap Datepicker 排版修復 (終極版)                  */
-/* ========================================================= */
+
 .datepicker.datepicker-dropdown {
-    min-width: 280px !important; /* 確保外框夠寬 */
+    min-width: 280px !important;
     padding: 10px !important;
 }
 
-/* 強制修復月份、年份被擠壓的問題 */
-.datepicker .datepicker-months td span, 
+.datepicker .datepicker-months td span,
 .datepicker .datepicker-years td span,
 .datepicker .datepicker-decades td span {
-    display: inline-block !important; /* 關鍵！沒有這個，寬高設定會失效 */
-    width: 22% !important;            /* 每排 4 個，保留一點彈性空間 */
-    height: 42px !important;          /* 加高按鈕 */
-    line-height: 42px !important;     /* 讓文字垂直置中 */
-    margin: 1% !important;            /* 強制撐出按鈕間距 */
-    white-space: nowrap !important;   /* 絕對不准換行 */
-    border-radius: 5px !important;    /* 圓角 */
-    font-size: 15px !important;       /* 確保字體大小適中 */
+    display: inline-block !important;
+    width: 22% !important;
+    height: 42px !important;
+    line-height: 42px !important;
+    margin: 1% !important;
+    white-space: nowrap !important;
+    border-radius: 5px !important;
+    font-size: 15px !important;
 }
 </style>
 
 </head>
 
-<body class="sidebar-open">
+<body>
 
 <div class="top-nav">
     <button class="toggle-btn active" id="sidebarToggle">
@@ -141,20 +193,25 @@ body.sidebar-open .content { margin-left: 240px; }
         <span></span>
         <span></span>
     </button>
+
     <h5 class="ms-3 mb-0">會員管理系統</h5>
 </div>
 
-<div class="sidebar" id="mySidebar">
-    <a href="/introduction_img" class="{% if active == 'introduction_img' %}active{% endif %}">年度健康管理會員</a>
-    <a href="/members" class="{% if active == 'members' %}active{% endif %}">會員基本資料</a>
-    <a href="/member_rights" class="{% if active == 'member_rights' %}active{% endif %}">會員內容</a>
-    <a href="/course_list" class="{% if active == 'course_list' %}active{% endif %}">療程清單</a>
-    <a href="/orders" class="{% if active == 'orders' %}active{% endif %}">購買紀錄</a>
-    <a href="/reports" class="{% if active == 'reports' %}active{% endif %}">報表</a>
-</div>
+<div class="main-layout">
 
-<div class="content">
-    {% block content %}{% endblock %}
+    <div class="sidebar" id="mySidebar">
+        <a href="/introduction_img" class="{% if active == 'introduction_img' %}active{% endif %}">年度健康管理會員</a>
+        <a href="/members" class="{% if active == 'members' %}active{% endif %}">會員基本資料</a>
+        <a href="/member_rights" class="{% if active == 'member_rights' %}active{% endif %}">會員內容</a>
+        <a href="/course_list" class="{% if active == 'course_list' %}active{% endif %}">療程清單</a>
+        <a href="/orders" class="{% if active == 'orders' %}active{% endif %}">購買紀錄</a>
+        <a href="/reports" class="{% if active == 'reports' %}active{% endif %}">報表</a>
+    </div>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
 </div>
 
 <!-- 核心基礎套件 -->
@@ -171,7 +228,7 @@ $(document).ready(function() {
     // 側邊欄切換
     $('#sidebarToggle').on('click', function() {
         $(this).toggleClass('active');
-        $('body').toggleClass('sidebar-open');
+        $('#mySidebar').toggleClass('collapsed');
     });
 
     // ⭐ 4. 全域自動初始化所有日期輸入框
