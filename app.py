@@ -222,80 +222,78 @@ def update_consultant(id):
 
 #========會員內容===========
 
-@app.route("/member_rights") # 假設這是你的會員權益頁面路由
+@app.route("/member_rights")
 def member_rights():
     member_id = request.args.get('member_id')
     
     # 1. 先找出該會員所有的 gift_header 紀錄
     gift_header = supabase.table("gift_header").select("*").eq("member_id", member_id).execute().data or []
 
-    # 2. 收集這些 header 的 id 變成一個列表 [1, 2, 3...]
+    # 2. 收集這些 header 的 id 變成一個列表
     header_ids = [h["id"] for h in gift_header]
 
-    # 3. 用 .in_() 去撈出所有 gift_id 在 header_ids 裡面的 body 資料
+    # 3. 撈出 body 資料
     if header_ids:
         gift_body = supabase.table("gift_body").select("*").in_("gift_id", header_ids).order("id").execute().data or []
     else:
         gift_body = []
 
-    # 4. 經典的巢狀資料組合：用 gift_header 的 id 去配對 gift_body 的 gift_id
+    # 4. 巢狀資料組合
     for h in gift_header:
         h["bodies"] = [b for b in gift_body if b["gift_id"] == h["id"]]
 
-    # 現在你的 gift_header 結構裡，每個項目都會有一個 "bodies" 列表了！
-    print(gift_header)
-    # 先檢查 gift_header 是不是空的，有資料才執行
-    # 1. 預設先找出 course_name（防呆：如果 header 有資料就抓 header 的，沒有就用寫死的）
-    course_name = gift_header[0]["course_name"] if gift_header else "三選一療程"
+    # 5. 精準計算與防呆 gift_qty 的數量
+    gift_qty = 0 
+    course_name = "三選一療程" # 預設安全牌
 
-    # 2. 判斷是否需要去撈資料庫（情況一：header 是空的，或是 情況二：數量為 0）
-    if not gift_header or gift_header[0]["gift_qty"] == 0:
-        
-        # 去 Supabase 查 default_qty
-        res_data = supabase.table("course").select("default_qty").eq("course_info", course_name).execute().data
-        
-        if res_data:
-            default_qty = res_data[0]["default_qty"]
-            
-            # 情況 A：如果 gift_header 有資料（只是數量為 0），就把值寫回 gift_header
-            if gift_header:
-                gift_header[0]["gift_qty"] = default_qty
-                gift_qty = default_qty
-            # 情況 B：如果 gift_header 本來就是空的，就把值賦予給變數
+    if gift_header:
+        header = gift_header[0]
+        db_qty = header.get("gift_qty")
+        if header.get("course_name"):
+            course_name = header["course_name"]
+
+        # 如果資料庫欄位是 None 或 0，則向外查詢預設值
+        if db_qty is None or db_qty == 0:
+            res_data = supabase.table("course").select("default_qty").eq("course_info", course_name).execute().data
+            if res_data and res_data[0].get("default_qty") is not None:
+                gift_qty = res_data[0]["default_qty"]
+                header["gift_qty"] = gift_qty  # 同步寫回結構，讓前端 JS 拿得到
             else:
-                gift_qty = default_qty
-                
-            print(f"成功取得預設數量: {gift_qty}")
+                # 保底機制：如果 course 表也查不到，直接拿現有的 bodies 數量當作總堂數
+                gift_qty = len(header["bodies"]) if len(header["bodies"]) > 0 else 0
+                header["gift_qty"] = gift_qty
         else:
-            print("資料庫中找不到該療程的預設數量")
-            gift_qty = 0  # 查不到資料時的保險預設值
-
+            gift_qty = db_qty
     else:
-        # 3. 如果 header 有資料且數量不為 0，就直接沿用原本的數量
-        gift_qty = gift_header[0]["gift_qty"]
+        # 如果根本沒有 header，去撈 course 表的預設數量
+        res_data = supabase.table("course").select("default_qty").eq("course_info", course_name).execute().data
+        if res_data:
+            gift_qty = res_data[0]["default_qty"]
 
-    print(f"最終的 gift_qty: {gift_qty}")
-    # ================= 新增這段 =================
-    # 4. 抓取所有的課程資料 (假設你的資料表叫做 courses)
-    # 這裡請確認你的 Supabase 裡面有沒有 "courses" 這個資料表
+    # 6. 抓取所有的課程資料與項目資料供下拉選單使用
     courses = supabase.table("course").select("*").execute().data or []
     course_item = supabase.table("course_item").select("*").execute().data or []
-    print(course_item)
-    # ============================================
+    
+    # 7. 會員基本資料與日期格式化
     member_data = supabase.table("members").select("*").eq("id", member_id).execute().data
-    print(member_data)
     if member_data:
         member = member_data[0]
-        # 手動截取日期 (如果欄位不為空且長度夠長)
         for field in ['birth', 'start_at', 'end_at']:
             if member.get(field):
-                # 取前 10 個字元 (YYYY-MM-DD)
                 member[field] = str(member[field])[:10]
     else:
         member = {}
-    # 這裡順便把抓出來的 courses 傳進模板
-    return render_template("member_rights.html", gift_header=gift_header, gift_body=gift_body,courses=courses,course_item=course_item,member=member,default_qty=gift_qty,member_id=member_id)
-
+        
+    return render_template(
+        "member_rights.html", 
+        gift_header=gift_header, 
+        gift_body=gift_body,
+        courses=courses,
+        course_item=course_item,
+        member=member,
+        default_qty=gift_qty,
+        member_id=member_id
+    )
 
 #========會員同行者=======
 @app.route("/member_party", methods=["GET"])
@@ -352,6 +350,165 @@ def update_member_party(id):
         
     return "ok"
 
+
+import traceback
+
+@app.route("/save_batch", methods=["POST"])
+def save_batch():
+    try:
+        # 1. 接收前端傳來的結構化 JSON 資料
+        data = request.json
+        if not data:
+            return jsonify({"status": "error", "message": "儲存失敗：未接收到有效的資料"}), 400
+
+        member_id = data.get('member_id') 
+        main_course_name = data.get('main_course_name') 
+        
+        if not member_id or str(member_id).strip() == "":
+            return jsonify({"status": "error", "message": "儲存失敗：未接收到有效的會員編號"}), 400
+
+        print("=== [Debug] 接收到的結構化主表單資料 ===")
+        print(f"member_id: {member_id}")
+        print(f"main_course_name: {main_course_name}")
+
+        # 🛡️ 權限防護：先去資料庫查出這個 member_id 真正擁有的所有主單 ID
+        # 區分為會員贈送與每月贈送兩張表
+        real_gift_headers = supabase.table("gift_header").select("id").eq("member_id", member_id).execute().data or []
+        allowed_gift_header_ids = [str(rh["id"]) for rh in real_gift_headers if "id" in rh]
+
+        # 這裡假設您的每月贈送主表名稱為 "monthly_header"
+        # real_monthly_headers = supabase.table("monthly_header").select("id").eq("member_id", member_id).execute().data or []
+        # allowed_monthly_header_ids = [str(rmh["id"]) for rmh in real_monthly_headers if "id" in rmh]
+
+        # ==========================================
+        # 2. 處理「會員贈送」 (Membership Rows) -> 維持原表
+        # ==========================================
+        membership_rows = data.get('membership_rows', [])
+        new_header_id_cache = None 
+
+        for item in membership_rows:
+            body_id = str(item.get('body_id', '')).strip()
+            header_id_from_form = str(item.get('header_id', '')).strip()
+            
+            if body_id.lower() in ['null', 'none', '']: body_id = None
+            if header_id_from_form.lower() in ['null', 'none', '']: header_id_from_form = None
+
+            current_gift_id = None
+
+            if header_id_from_form:
+                if header_id_from_form not in allowed_gift_header_ids:
+                    return jsonify({"status": "error", "message": f"越權存取：無權使用主帳單編號 {header_id_from_form}"}), 403
+                current_gift_id = header_id_from_form
+            else:
+                if not new_header_id_cache:
+                    new_header_data = {
+                        "member_id": member_id, 
+                        "course_name": main_course_name,
+                        "start_at": item.get('start_at') if item.get('start_at') else None,
+                        "end_at": item.get('end_at') if item.get('end_at') else None,
+                        "gift_qty": 6,
+                        # "gift_type": "membership"
+                    }
+                    header_response = supabase.table('gift_header').insert(new_header_data).execute()
+                    if header_response.data:
+                        new_header_id_cache = str(header_response.data[0]['id'])
+                        allowed_gift_header_ids.append(new_header_id_cache)
+                
+                current_gift_id = new_header_id_cache
+
+            raw_remaining = item.get('remain_qty', '0')
+            body_data = {
+                "gift_id": current_gift_id,  
+                "use_date": item.get('use_date') if item.get('use_date') else None,
+                "user_name": item.get('user_name', ''),
+                "use_course": item.get('use_course', ''),
+                "remain_qty": int(raw_remaining) if str(raw_remaining).isdigit() else 0,
+                "note": item.get('note', '')
+            }
+
+            if body_id:
+                check_body = supabase.table("gift_body").select("gift_id").eq("id", body_id).execute().data or []
+                if check_body:
+                    db_gift_id = str(check_body[0].get("gift_id"))
+                    if db_gift_id not in allowed_gift_header_ids:
+                        return jsonify({"status": "error", "message": f"越權存取：無權修改紀錄編號 {body_id}"}), 403
+                
+                print(f"[Debug] 會員贈送 -> 執行 UPDATE (body_id: {body_id})")
+                supabase.table('gift_body').update(body_data).eq('id', body_id).execute()
+            else:
+                print(f"[Debug] 會員贈送 -> 執行 INSERT (全新明細欄位)")
+                supabase.table('gift_body').insert(body_data).execute()
+
+        # ==========================================
+        # 3. 處理「每月贈送」 (Monthly Rows) -> 改寫入新表且不帶 gift_type
+        # ==========================================
+        # 💡 請根據您實際的 DB 調整表名：這裡暫定主表為 'monthly_header'，明細表為 'monthly_body'
+        # monthly_rows = data.get('monthly_rows', [])
+        # for item in monthly_rows:
+        #     body_id = str(item.get('body_id', '')).strip()
+        #     header_id_from_form = str(item.get('header_id', '')).strip()
+
+        #     if body_id.lower() in ['null', 'none', '']: body_id = None
+        #     if header_id_from_form.lower() in ['null', 'none', '']: header_id_from_form = None
+
+        #     current_monthly_id = None
+
+        #     if header_id_from_form:
+        #         if header_id_from_form not in allowed_monthly_header_ids:
+        #             return jsonify({"status": "error", "message": f"越權存取：無權使用每月主帳單編號 {header_id_from_form}"}), 403
+        #         current_monthly_id = header_id_from_form
+                
+        #         # 同步更新每月主單對應的起迄日期 (操作 monthly_header)
+        #         supabase.table('monthly_header').update({
+        #             "start_at": item.get('start_at') if item.get('start_at') else None,
+        #             "end_at": item.get('end_at') if item.get('end_at') else None
+        #         }).eq('id', current_monthly_id).execute()
+        #     else:
+        #         # 如果是手動增加的全新每月贈送列，幫它獨立建立一個 monthly 的單頭 (移除 gift_type 欄位)
+        #         new_monthly_header_data = {
+        #             "member_id": member_id, 
+        #             "course_name": main_course_name,
+        #             "start_at": item.get('start_at') if item.get('start_at') else None,
+        #             "end_at": item.get('end_at') if item.get('end_at') else None,
+        #             "gift_qty": 1
+        #             # ❌ 已移除 "gift_type": "monthly"
+        #         }
+        #         header_response = supabase.table('monthly_header').insert(new_monthly_header_data).execute()
+        #         if header_response.data:
+        #             current_monthly_id = str(header_response.data[0]['id'])
+        #             allowed_monthly_header_ids.append(current_monthly_id)
+
+        #     raw_remaining = item.get('remain_qty', '0')
+        #     # 這裡的外鍵欄位名稱，請確認在 monthly_body 中是否仍叫 "gift_id"，若改為 "monthly_id" 請自行修正
+        #     body_data = {
+        #         "gift_id": current_monthly_id,  
+        #         "use_date": item.get('use_date') if item.get('use_date') else None,
+        #         "user_name": item.get('user_name', ''),
+        #         "use_course": item.get('use_course', ''),
+        #         "remain_qty": int(raw_remaining) if str(raw_remaining).isdigit() else 0,
+        #         "note": item.get('note', '')
+        #     }
+
+        #     if body_id:
+        #         # 安全檢查：改查 monthly_body 表
+        #         check_body = supabase.table("monthly_body").select("gift_id").eq("id", body_id).execute().data or []
+        #         if check_body:
+        #             db_gift_id = str(check_body[0].get("gift_id"))
+        #             if db_gift_id not in allowed_monthly_header_ids:
+        #                 return jsonify({"status": "error", "message": f"越權存取：無權修改每月紀錄編號 {body_id}"}), 403
+                
+        #         print(f"[Debug] 每月贈送 -> 執行 UPDATE (body_id: {body_id})")
+        #         supabase.table('monthly_body').update(body_data).eq('id', body_id).execute()
+        #     else:
+        #         print(f"[Debug] 每月贈送 -> 執行 INSERT")
+        #         supabase.table('monthly_body').insert(body_data).execute()
+
+        return jsonify({"status": "success", "message": "批次儲存成功！"})
+
+    except Exception as e:
+        print(f"[Debug] 發生錯誤 (Exception): {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({"status": "error", "message": f"發生錯誤：{str(e)}"}), 500
 
 @app.route("/introduction_img")
 def image():

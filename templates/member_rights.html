@@ -37,7 +37,7 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td>{{ member.member_id }}</td>
+                            <td>{{ member.id }}</td>
                             <td>{{ member.name }}</td>
                             <td>{{ member.phone }}</td>
                             <td>{{ member.birth }}</td>
@@ -53,14 +53,14 @@
     </div>
     
     <form action="/save_batch" method="POST" onsubmit="return false;">
-        <input type="hidden" name="member_name" value="">
+        <input type="hidden" name="member_id" value="{{ member.id }}">
 
         <div class="card mb-4 shadow-sm" id="membership_card">
             <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
                     <span>會員贈送 (共 <span id="txt_membership_count">0</span> 堂)</span>
                     
-                    <select id="header_course_select" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
+                    <select id="header_course_select" name="main_course_name" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
                         <option value="" disabled selected>預設療程</option>
                         {% for course in courses %}
                             <option value="{{ course.course_info }}">{{ course.course_info }}</option>
@@ -74,7 +74,7 @@
                     <thead class="table-light">
                         <tr>
                             <th style="width: 18%;">使用區間</th>
-                            <th style="width: 15%;">使用時間</th>
+                            <th style="width: 5%;">序</th>   <th style="width: 15%;">使用時間</th>
                             <th style="width: 12%;">使用者姓名</th>
                             <th style="width: 20%;">使用療程</th>
                             <th style="width: 10%;">剩餘堂數</th>
@@ -83,7 +83,7 @@
                         </tr>
                     </thead>
                     <tbody id="membership_tbody">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -108,7 +108,7 @@
                         </tr>
                     </thead>
                     <tbody id="monthly_tbody">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -143,7 +143,6 @@
 const giftHeaderData = JSON.parse('{{ gift_header | tojson | safe }}');
 const coursesData = JSON.parse('{{ courses | default([]) | tojson | safe }}');
 const coursesItemData = JSON.parse('{{ course_item | default([]) | tojson | safe }}');
-
 const defaultQtyFromBackend = Number('{{ default_qty | default(0) }}');
 
 $(document).ready(function() {
@@ -153,11 +152,9 @@ $(document).ready(function() {
     renderGiftTables();
     initDynamicDatepickers();
 
-    // 動態連動監聽
     $('#header_course_select').change(function() {
         const selectedMainCourseInfo = $(this).val(); 
         
-        // 更新會員贈送表格的下拉選單
         $('#membership_tbody select[name="m_course_name[]"]').each(function() {
             const $childSelect = $(this);
             const currentSelectedChild = $childSelect.val(); 
@@ -165,13 +162,45 @@ $(document).ready(function() {
             $childSelect.html(filteredOptionsHtml);
         });
 
-        // 更新每月贈送表格的下拉選單
         $('#monthly_tbody select[name="mo_course_name[]"]').each(function() {
             const $childSelect = $(this);
             const currentSelectedChild = $childSelect.val(); 
             const filteredOptionsHtml = getCourseOptionsHtml(currentSelectedChild, selectedMainCourseInfo);
             $childSelect.html(filteredOptionsHtml);
         });
+    });
+
+    // ================= 💡 新增：欄位輸入連動計算剩餘堂數 =================
+    // 1. 會員贈送連動
+    $('#membership_tbody').on('change input', 'input[name="m_used_at[]"], select[name="m_course_name[]"]', function() {
+        const $row = $(this).closest('tr');
+        const usedAt = $row.find('input[name="m_used_at[]"]').val();
+        const courseName = $row.find('select[name="m_course_name[]"]').val();
+        const index = $row.index();
+        const totalQty = $('#membership_tbody tr').length; // 或是用 header 的總量
+
+        // 只有在填了使用時間或選了療程，才去計算顯示
+        if (usedAt || courseName) {
+            $row.find('input[name="m_remaining_qty[]"]').val(totalQty - index);
+        } else {
+            $row.find('input[name="m_remaining_qty[]"]').val('');
+        }
+    });
+
+    // 2. 每月贈送連動
+    $('#monthly_tbody').on('change input', 'input[name="mo_used_at[]"], select[name="mo_course_name[]"]', function() {
+        const $row = $(this).closest('tr');
+        const usedAt = $row.find('input[name="mo_used_at[]"]').val();
+        const courseName = $row.find('select[name="mo_course_name[]"]').val();
+
+        if (usedAt || courseName) {
+            // 每月贈送通常扣減邏輯不一定依序，若有預設規則可在此計算，此處先給 0 或 1
+            if (!$row.find('input[name="mo_remaining_qty[]"]').val()) {
+                $row.find('input[name="mo_remaining_qty[]"]').val(0);
+            }
+        } else {
+            $row.find('input[name="mo_remaining_qty[]"]').val('');
+        }
     });
 });
 
@@ -233,6 +262,7 @@ function renderGiftTables() {
     }
 
     initDynamicDatepickers();
+    refreshSequenceNumbers('membership_tbody'); 
 }
 
 function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
@@ -240,11 +270,20 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
     const bodyId = body ? body.id : '';
     const startAt = (header && header.start_at) ? header.start_at : defaultStartAt;
     const endAt = (header && header.end_at) ? header.end_at : defaultEndAt;
-    const usedAt = body ? (body.used_at || '') : '';
-    const userName = body ? (body.user_name || '') : ''; 
-    const courseName = body ? (body.course_name || '') : '';
-    const remaining = body ? body.remaining_qty : (header ? (header.gift_qty - index) : '');
-    const remark = body ? (body.remark || '') : '';
+    
+    const usedAt = body ? (body.use_date || '') : '';        
+    const userName = body ? (body.user_name || '') : '';      
+    const courseName = body ? (body.use_course || '') : '';    
+    
+    // 💡 關鍵修正：判斷是否有真實填寫資料。如果是空列，剩餘堂數不預填任何數字。
+    let remaining = '';
+    if (body) {
+        remaining = body.remain_qty;
+    } else if (usedAt || courseName) {
+        remaining = header ? (header.gift_qty - index) : '';
+    }
+
+    const remark = body ? (body.note || '') : '';             
 
     const mainCourseInfo = header ? (header.course_name || $('#header_course_select').val()) : $('#header_course_select').val();
 
@@ -252,7 +291,6 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
     if (isFirstRow) {
         rowspanHtml = `
             <td rowspan="${totalRows}" class="align-middle bg-light">
-                <input type="hidden" name="m_header_id[]" value="${headerId}">
                 <div class="d-flex flex-column gap-1">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">起</span>
@@ -270,8 +308,14 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
    return `
         <tr>
             ${rowspanHtml}
-            <td>
+            
+            <td class="align-middle text-center" data-header-id="${headerId}">
+                <input type="hidden" name="m_header_id[]" value="${headerId}">
                 <input type="hidden" name="m_body_id[]" value="${bodyId}">
+                <span class="seq-text fw-bold"></span>
+            </td>
+
+            <td>
                 <input type="text" class="form-control js-datepicker" name="m_used_at[]" value="${usedAt}" autocomplete="off">
             </td>
             <td>
@@ -299,11 +343,13 @@ function generateMonthlyRowHtml(header, body, index) {
     const startAt = (header && header.start_at) ? header.start_at : defaultStartAt;
     const endAt = (header && header.end_at) ? header.end_at : defaultEndAt;
     
-    const usedAt = body ? (body.used_at || '') : '';
-    const userName = body ? (body.user_name || '') : '';
-    const courseName = body ? (body.course_name || '') : '';
-    const remaining = body ? body.remaining_qty : '';
-    const remark = body ? (body.remark || '') : '';
+    const usedAt = body ? (body.use_date || '') : '';        
+    const userName = body ? (body.user_name || '') : '';      
+    const courseName = body ? (body.use_course || '') : '';    
+    
+    // 💡 關鍵修正：每月贈送也是一樣有資料才顯示
+    const remaining = body ? body.remain_qty : '';           
+    const remark = body ? (body.note || '') : '';             
 
     const mainCourseInfo = header ? (header.course_name || $('#header_course_select').val()) : $('#header_course_select').val();
 
@@ -339,30 +385,20 @@ function generateMonthlyRowHtml(header, body, index) {
     `;
 }
 
-/**
- * 🔥 核心修正：嚴格依照你提供的關聯邏輯
- * 左選單 course_info -> 找 course.id -> 關聯 course_item.course_id -> 產出 course_item.name
- */
 function getCourseOptionsHtml(selectedCourseItemName, mainCourseInfo) {
     let options = '<option value="" disabled selected>請選擇療程</option>';
     let filteredItems = coursesItemData;
     
     if (mainCourseInfo) {
-        // 1. 比對 course_info 找出該主療程 (雙重比對防呆，支援 course_info 或 name)
         const matchedCourse = coursesData.find(c => c.course_info === mainCourseInfo || c.name === mainCourseInfo);
-        
         if (matchedCourse) {
-            // 2. 抓出 course.id
             const mainCourseId = matchedCourse.id;
-            
-            // 3. 關聯 course_item 的 course_id
             filteredItems = coursesItemData.filter(item => String(item.course_id) === String(mainCourseId));
         } else {
             filteredItems = [];
         }
     }
 
-    // 4. 取出 course_item 的 name 產生選項
     filteredItems.forEach(item => {
         const itemName = item.name;
         const isSelected = (selectedCourseItemName && itemName === selectedCourseItemName) ? 'selected' : '';
@@ -398,7 +434,6 @@ function initDynamicDatepickers() {
     }
 }
 
-// ========== 手動新增/刪除操作區 ==========
 function addMembershipRow() {
     const $tbody = $('#membership_tbody');
     const $lastRowspanCell = $tbody.find('td[rowspan]').last();
@@ -406,7 +441,7 @@ function addMembershipRow() {
     if ($lastRowspanCell.length > 0) {
         let currentSpan = parseInt($lastRowspanCell.attr('rowspan')) || 1;
         $lastRowspanCell.attr('rowspan', currentSpan + 1);
-        const headerId = $lastRowspanCell.find('input[name="m_header_id[]"]').val() || '';
+        const headerId = $lastRowspanCell.closest('tr').find('input[name="m_header_id[]"]').val() || '';
         const rowHtml = generateMembershipRowHtml({ id: headerId }, null, 0, false, 1);
         $tbody.append(rowHtml);
     } else {
@@ -416,6 +451,7 @@ function addMembershipRow() {
 
     initDynamicDatepickers();
     updateCounter('membership');
+    refreshSequenceNumbers('membership_tbody'); 
 }
 
 function addMonthlyRow() {
@@ -454,6 +490,7 @@ function deleteMembershipRow(button, headerId) {
 
     $currentRow.remove();
     updateCounter('membership');
+    refreshSequenceNumbers('membership_tbody'); 
 }
 
 function deleteRow(button, type) {
@@ -471,8 +508,7 @@ function updateCounter(type) {
     }
 }
 
-// ========== 同行者管理區 ==========
-let currentMemberId = "{{ member_id }}"; 
+let currentMemberId = "{{ member.id }}"; 
 let memberPartyData = []; 
 
 $('#btnMemberParty').click(function () {
@@ -546,5 +582,150 @@ window.deleteMemberParty = function(id) {
         setTimeout(() => { fetchMemberParty(currentMemberId); }, 100);
     });
 };
+
+document.querySelector('form').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+
+    const payload = {
+        member_id: document.querySelector('input[name="member_id"]').value,
+        main_course_name: document.getElementById('header_course_select').value,
+        membership_rows: [],
+        monthly_rows: []
+    };
+
+    let hasError = false; // 用來標記是否有欄位未填寫
+
+    // 1. 抓取與檢查 【會員贈送】
+    let currentMStart = "";
+    let currentMEnd = "";
+    $('#membership_tbody tr').each(function(index) {
+        const $row = $(this);
+        
+        // 抓取 rowspan 的日期 (只有第一列會有)
+        const $startInput = $row.find('input[name="m_start_at[]"]');
+        if ($startInput.length > 0) {
+            currentMStart = $startInput.val();
+            currentMEnd = $row.find('input[name="m_end_at[]"]').val();
+        }
+
+        const useDate = $row.find('input[name="m_used_at[]"]').val() || "";
+        const userName = $row.find('select[name="m_user_name[]"]').val() || "";
+        const useCourse = $row.find('select[name="m_course_name[]"]').val() || "";
+        const remainQty = $row.find('input[name="m_remaining_qty[]"]').val() || "0";
+        const note = $row.find('input[name="m_remark[]"]').val() || "";
+
+        // 🔥 必填檢查：只要其中一個有填，就視為該列「準備要核銷」，其他兩個就變成必填
+        if (useDate || userName || useCourse) {
+            if (!useDate || !userName || !useCourse) {
+                alert(`❌ 儲存失敗：【會員贈送】第 ${index + 1} 列的「使用時間」、「使用者姓名」、「使用療程」為必填組合，請填寫完整！`);
+                $row.css('background-color', '#fff3cd'); // 將有問題的列加上淡淡的黃色背景提醒
+                hasError = true;
+                return false; // 跳出 jQuery .each 迴圈
+            }
+        } else {
+            // 如果這列是完全空白的，且不是資料庫原本就有的舊資料（沒有 body_id），可以選擇跳過不送出
+            const bodyId = $row.find('input[name="m_body_id[]"]').val() || "";
+            if (!bodyId) {
+                return true; // 沒填也沒舊資料，直接跳過這列不打包
+            }
+        }
+
+        // 移除先前的錯誤背景色
+        $row.css('background-color', '');
+
+        payload.membership_rows.push({
+            header_id: $row.find('input[name="m_header_id[]"]').val() || "",
+            body_id: $row.find('input[name="m_body_id[]"]').val() || "",
+            start_at: currentMStart,
+            end_at: currentMEnd,
+            use_date: useDate,
+            user_name: userName,
+            use_course: useCourse,
+            remain_qty: remainQty,
+            note: note
+        });
+    });
+
+    if (hasError) return; // 如果前面有錯誤，攔截不往下執行
+
+    // 2. 抓取與檢查 【每月贈送】
+    $('#monthly_tbody tr').each(function(index) {
+        const $row = $(this);
+        
+        const startAt = $row.find('input[name="mo_start_at[]"]').val() || "";
+        const endAt = $row.find('input[name="mo_end_at[]"]').val() || "";
+        const useDate = $row.find('input[name="mo_used_at[]"]').val() || "";
+        const userName = $row.find('select[name="mo_user_name[]"]').val() || "";
+        const useCourse = $row.find('select[name="mo_course_name[]"]').val() || "";
+        const remainQty = $row.find('input[name="mo_remaining_qty[]"]').val() || "0";
+        const note = $row.find('input[name="mo_remark[]"]').val() || "";
+
+        // 🔥 每月贈送必填檢查
+        if (useDate || userName || useCourse) {
+            if (!useDate || !userName || !useCourse) {
+                alert(`❌ 儲存失敗：【每月贈送】第 ${index + 1} 列的「使用時間」、「使用者姓名」、「使用療程」為必填組合，請填寫完整！`);
+                $row.css('background-color', '#fff3cd');
+                hasError = true;
+                return false; 
+            }
+        } else {
+            const bodyId = $row.find('input[name="mo_body_id[]"]').val() || "";
+            if (!bodyId) {
+                return true; 
+            }
+        }
+
+        $row.css('background-color', '');
+
+        payload.monthly_rows.push({
+            header_id: $row.find('input[name="mo_header_id[]"]').val() || "",
+            body_id: $row.find('input[name="mo_body_id[]"]').val() || "",
+            start_at: startAt,
+            end_at: endAt,
+            use_date: useDate,
+            user_name: userName,
+            use_course: useCourse,
+            remain_qty: remainQty,
+            note: note
+        });
+    });
+
+    if (hasError) return; 
+
+    // 3. 驗證通過，正式發送 AJAX 送至後端
+    fetch('/save_batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ ' + data.message);
+            location.reload(); 
+        } else {
+            alert('❌ 儲存失敗：' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('⚠️ 系統發生錯誤，請檢查網路連線或稍後再試。');
+    });
+});
+function refreshSequenceNumbers(tbodyId) {
+    $(`#${tbodyId} tr`).each(function(index) {
+        const $cell = $(this).find('td[data-header-id]');
+        const headerId = $cell.attr('data-header-id');
+        const $span = $cell.find('.seq-text');
+        
+        if (headerId && headerId !== 'undefined' && headerId !== 'null' && headerId !== '') {
+            $span.text(headerId);
+            $span.removeClass('text-danger').addClass('text-secondary');
+        } else {
+            $span.text(index + 1); 
+            $span.removeClass('text-secondary').addClass('text-danger');
+        }
+    });
+}
 </script>
 {% endblock %}
