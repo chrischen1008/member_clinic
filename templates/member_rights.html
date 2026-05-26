@@ -6,74 +6,69 @@
     body { background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
     .card-header-custom { background-color: #fff3cd; color: #856404; font-weight: bold; }
     .table input, .table select { border: 1px solid #ced4da; padding: 4px 8px; border-radius: 4px; width: 100%; }
-    /* 讓合併儲存格內的文字能垂直置中 */
     .align-middle td { vertical-align: middle !important; }
     .btn-add { background-color: #ffe8a1; color: #856404; border: 1px solid #dfc371; font-weight: bold; }
     .btn-add:hover { background-color: #dfc371; color: #fff; }
 </style>
 
 <div class="container py-5">
-    <!-- 上方的按鈕區-->
     <button class="btn btn-outline-success" id="btnMemberRights">會員內容</button>
     <button class="btn btn-outline-dark" id="btnOrders">購買紀錄</button>
     <button class="btn btn-info text-white" id="btnMemberParty">同行者清單</button>
-<!-- 會員基本資料卡片 -->
-<div class="card mb-4 shadow-sm">
-    <div class="card-header" style="background-color: #e9ecef; font-weight: bold;">
-        <i class="fas fa-user"></i> 會員基本資料
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-bordered mb-0 text-center align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 10%;">會員編號</th>
-                        <th style="width: 10%;">姓名</th>
-                        <th style="width: 15%;">電話</th>
-                        <th style="width: 10%;">生日</th>
-                        <th style="width: 8%;">性別</th>
-                        <th style="width: 12%;">諮詢師</th>
-                        <th style="width: 15%;">會籍開始</th>
-                        <th style="width: 15%;">會籍截止</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>{{ member.member_id }}</td>
-                        <td>{{ member.name }}</td>
-                        <td>{{ member.phone }}</td>
-                        <td>{{ member.birth }}</td>
-                        <td>{{ member.gender }}</td>
-                        <td>{{ member.consultant }}</td>
-                        <td>{{ member.start_at }}</td>
-                        <td>{{ member.end_at }}</td>
-                    </tr>
-                </tbody>
-            </table>
+
+    <div class="card mb-4 shadow-sm mt-3">
+        <div class="card-header" style="background-color: #e9ecef; font-weight: bold;">
+            <i class="fas fa-user"></i> 會員基本資料
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0 text-center align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 10%;">會員編號</th>
+                            <th style="width: 10%;">姓名</th>
+                            <th style="width: 15%;">電話</th>
+                            <th style="width: 10%;">生日</th>
+                            <th style="width: 8%;">性別</th>
+                            <th style="width: 12%;">諮詢師</th>
+                            <th style="width: 15%;">會籍開始</th>
+                            <th style="width: 15%;">會籍截止</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ member.member_id }}</td>
+                            <td>{{ member.name }}</td>
+                            <td>{{ member.phone }}</td>
+                            <td>{{ member.birth }}</td>
+                            <td>{{ member.gender }}</td>
+                            <td>{{ member.consultant }}</td>
+                            <td>{{ member.start_at }}</td>
+                            <td>{{ member.end_at }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
     
     <form action="/save_batch" method="POST" onsubmit="return false;">
         <input type="hidden" name="member_name" value="">
 
-        <!-- 會員贈送表格 -->
         <div class="card mb-4 shadow-sm" id="membership_card">
             <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-2">
-                <span>會員贈送 (共 <span id="txt_membership_count">0</span> 堂)</span>
-                
-                <!-- 新增的療程下拉選單 -->
-                <select id="header_course_select" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
-                    <option value="" disabled selected>預設療程</option>
-                    {% for course in courses %}
-                        <option value="{{ course.name }}">{{ course.course_info }}</option>
-                    {% endfor %}
-                </select>
+                <div class="d-flex align-items-center gap-2">
+                    <span>會員贈送 (共 <span id="txt_membership_count">0</span> 堂)</span>
+                    
+                    <select id="header_course_select" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
+                        <option value="" disabled selected>預設療程</option>
+                        {% for course in courses %}
+                            <option value="{{ course.course_info }}">{{ course.course_info }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="button" class="btn btn-sm btn-add" onclick="addMembershipRow()">➕ 新增一列</button>
             </div>
-            
-            <button type="button" class="btn btn-sm btn-add" onclick="addMembershipRow()">➕ 新增一列</button>
-        </div>
             <div class="card-body p-0">
                 <table class="table table-bordered mb-0 text-center align-middle">
                     <thead class="table-light">
@@ -88,13 +83,11 @@
                         </tr>
                     </thead>
                     <tbody id="membership_tbody">
-                        <!-- 由 JS 動態產生 -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- 每月贈送表格 -->
         <div class="card mb-4 shadow-sm" id="monthly_card">
             <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
                 <span>每月贈送 (共 <span id="txt_monthly_count">0</span> 堂)</span>
@@ -115,8 +108,7 @@
                         </tr>
                     </thead>
                     <tbody id="monthly_tbody">
-                        <!-- 由 JS 動態產生 -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -127,7 +119,6 @@
     </form>
 </div>
 
-<!-- ================= 同行者 / 家人清單 Modal ================= -->
 <div class="modal fade" id="memberPartyModal">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
@@ -149,32 +140,45 @@
 
 {% block scripts %}
 <script>
-// 1. 騙過編輯器語法檢查的 JSON 解析方式
 const giftHeaderData = JSON.parse('{{ gift_header | tojson | safe }}');
 const coursesData = JSON.parse('{{ courses | default([]) | tojson | safe }}');
 const coursesItemData = JSON.parse('{{ course_item | default([]) | tojson | safe }}');
-console.log(coursesItemData);
-// 用單引號包住 Jinja2 語法騙過編輯器，再用 Number() 轉成真正的數字
+
 const defaultQtyFromBackend = Number('{{ default_qty | default(0) }}');
-console.log("defaultQtyFromBackend:"+defaultQtyFromBackend);
+
 $(document).ready(function() {
-    //【新增】：頁面一載入，就先去撈當前會員的同行者資料
     if (currentMemberId) {
         fetchMemberParty(currentMemberId);
     }
-    // 初始化渲染表格
     renderGiftTables();
-    
-    // 初始化動態產生的 Datepicker（如果你是用 bootstrap-datepicker）
     initDynamicDatepickers();
 
+    // 動態連動監聽
+    $('#header_course_select').change(function() {
+        const selectedMainCourseInfo = $(this).val(); 
+        
+        // 更新會員贈送表格的下拉選單
+        $('#membership_tbody select[name="m_course_name[]"]').each(function() {
+            const $childSelect = $(this);
+            const currentSelectedChild = $childSelect.val(); 
+            const filteredOptionsHtml = getCourseOptionsHtml(currentSelectedChild, selectedMainCourseInfo);
+            $childSelect.html(filteredOptionsHtml);
+        });
+
+        // 更新每月贈送表格的下拉選單
+        $('#monthly_tbody select[name="mo_course_name[]"]').each(function() {
+            const $childSelect = $(this);
+            const currentSelectedChild = $childSelect.val(); 
+            const filteredOptionsHtml = getCourseOptionsHtml(currentSelectedChild, selectedMainCourseInfo);
+            $childSelect.html(filteredOptionsHtml);
+        });
+    });
 });
-const currentMemberName = "{{ member.name }}"; // 從 Jinja2 取得
-const defaultStartAt = "{{ member.start_at | default('') }}"; // 🔥【新增】預設會籍開始日期
+
+const currentMemberName = "{{ member.name }}"; 
+const defaultStartAt = "{{ member.start_at | default('') }}"; 
 const defaultEndAt = "{{ member.end_at | default('') }}";
-/**
- * 主要渲染邏輯
- */
+
 function renderGiftTables() {
     $('#membership_tbody').empty();
     $('#monthly_tbody').empty();
@@ -182,21 +186,19 @@ function renderGiftTables() {
     let totalMembershipCount = 0;
     let totalMonthlyCount = 0;
 
-    // 🔥【新增這段】：如果後端傳來空陣列，手動偽造一筆預設資料塞進去
     if (giftHeaderData.length === 0) {
         giftHeaderData.push({
-            id: null,                       // 因為是新增的，所以沒有 ID
-            gift_qty: defaultQtyFromBackend,// 使用後端帶過來的 6
-            course_name: "三選一療程",      // 你的預設療程名稱
-            gift_type: "membership",        // 預設分類（看你要去 membership 還是 monthly）
-            bodies: []                      // 空的內容
+            id: null,                      
+            gift_qty: defaultQtyFromBackend,
+            course_name: "三選一療程",      
+            gift_type: "membership",        
+            bodies: []                      
         });
     }
 
-    // 接下來的 logic 就能完全正常運作了！
     giftHeaderData.forEach(header => {
         const qty = (header.gift_qty && header.gift_qty > 0) ? header.gift_qty : defaultQtyFromBackend;
-        header.gift_qty = qty; // 強制寫回，確保 rowspan 正常
+        header.gift_qty = qty; 
         
         const bodies = header.bodies || [];
         const type = header.gift_type || 'membership'; 
@@ -226,24 +228,25 @@ function renderGiftTables() {
     $('#txt_membership_count').text(totalMembershipCount);
     $('#txt_monthly_count').text(totalMonthlyCount);
 
-    //【新增這行】：每次重新畫完表格，一律重新啟動 Datepicker
+    if (giftHeaderData.length > 0 && giftHeaderData[0].course_name) {
+        $('#header_course_select').val(giftHeaderData[0].course_name);
+    }
+
     initDynamicDatepickers();
 }
-/**
- * 建立「會員贈送」單列 HTML（支援跨列合併與雙 Datepicker）
- */
+
 function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
     const headerId = header ? header.id : '';
     const bodyId = body ? body.id : '';
-    
-// 🔥【修改這兩行】：如果 header 有帶日期就用 header 的，沒有的話就預設帶入會籍起止
     const startAt = (header && header.start_at) ? header.start_at : defaultStartAt;
     const endAt = (header && header.end_at) ? header.end_at : defaultEndAt;
     const usedAt = body ? (body.used_at || '') : '';
-    const userName = body ? (body.user_name || '') : ''; // 這裡會帶入已存在的姓名
+    const userName = body ? (body.user_name || '') : ''; 
     const courseName = body ? (body.course_name || '') : '';
     const remaining = body ? body.remaining_qty : (header ? (header.gift_qty - index) : '');
     const remark = body ? (body.remark || '') : '';
+
+    const mainCourseInfo = header ? (header.course_name || $('#header_course_select').val()) : $('#header_course_select').val();
 
     let rowspanHtml = '';
     if (isFirstRow) {
@@ -264,26 +267,25 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
         `;
     }
 
-    return `
+   return `
         <tr>
             ${rowspanHtml}
             <td>
                 <input type="hidden" name="m_body_id[]" value="${bodyId}">
-                <input type="text" class="js-datepicker" name="m_used_at[]" value="${usedAt}" autocomplete="off">
+                <input type="text" class="form-control js-datepicker" name="m_used_at[]" value="${usedAt}" autocomplete="off">
             </td>
             <td>
-                <select name="m_user_name[]" style="width: 100%; border: 1px solid #ced4da; padding: 4px 8px; border-radius: 4px;">
+                <select class="form-select" name="m_user_name[]">
                     ${getPartyOptionsHtml(currentMemberName, userName)}
                 </select>
             </td>
             <td>
-                <select name="m_course_name[]">
-                    ${getCourseOptionsHtml(courseName)}
+                <select class="form-select" name="m_course_name[]">
+                    ${getCourseOptionsHtml(courseName, mainCourseInfo)}
                 </select>
             </td>
-            // value="${remaining}"
-            <td><input type="number" name="m_remaining_qty[]" min="0"></td>
-            <td><input type="text" name="m_remark[]" value="${remark}" placeholder="備註"></td>
+            <td><input type="number" class="form-control" name="m_remaining_qty[]" min="0" value="${remaining}"></td>
+            <td><input type="text" class="form-control" name="m_remark[]" value="${remark}" placeholder="備註"></td>
             <td>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMembershipRow(this, '${headerId}')">刪除</button>
             </td>
@@ -291,13 +293,9 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
     `;
 }
 
-/**
- * 建立「每月贈送」單列 HTML
- */
 function generateMonthlyRowHtml(header, body, index) {
     const headerId = header ? header.id : '';
     const bodyId = body ? body.id : '';
-// 🔥【修改這兩行】：如果 header 有帶日期就用 header 的，沒有的話就預設帶入會籍起止
     const startAt = (header && header.start_at) ? header.start_at : defaultStartAt;
     const endAt = (header && header.end_at) ? header.end_at : defaultEndAt;
     
@@ -307,27 +305,33 @@ function generateMonthlyRowHtml(header, body, index) {
     const remaining = body ? body.remaining_qty : '';
     const remark = body ? (body.remark || '') : '';
 
+    const mainCourseInfo = header ? (header.course_name || $('#header_course_select').val()) : $('#header_course_select').val();
+
     return `
         <tr>
             <td>
                 <input type="hidden" name="mo_header_id[]" value="${headerId}">
-                <input type="text" class="js-datepicker" name="mo_start_at[]" value="${startAt}" autocomplete="off">
+                <input type="text" class="form-control js-datepicker" name="mo_start_at[]" value="${startAt}" autocomplete="off">
             </td>
             <td>
-                <input type="text" class="js-datepicker" name="mo_end_at[]" value="${endAt}" autocomplete="off">
+                <input type="text" class="form-control js-datepicker" name="mo_end_at[]" value="${endAt}" autocomplete="off">
             </td>
             <td>
                 <input type="hidden" name="mo_body_id[]" value="${bodyId}">
-                <input type="text" class="js-datepicker" name="mo_used_at[]" value="${usedAt}" autocomplete="off">
+                <input type="text" class="form-control js-datepicker" name="mo_used_at[]" value="${usedAt}" autocomplete="off">
             </td>
-            <td><input type="text" name="mo_user_name[]" value="${userName}" placeholder="姓名"></td>
             <td>
-                <select name="mo_course_name[]">
-                    ${getCourseOptionsHtml(courseName)}
+                <select class="form-select" name="mo_user_name[]">
+                    ${getPartyOptionsHtml(currentMemberName, userName)}
                 </select>
             </td>
-            <td><input type="number" name="mo_remaining_qty[]" value="${remaining}"></td>
-            <td><input type="text" name="mo_remark[]" value="${remark}" placeholder="備註"></td>
+            <td>
+                <select class="form-select" name="mo_course_name[]">
+                    ${getCourseOptionsHtml(courseName, mainCourseInfo)}
+                </select>
+            </td>
+            <td><input type="number" class="form-control" name="mo_remaining_qty[]" value="${remaining}"></td>
+            <td><input type="text" class="form-control" name="mo_remark[]" value="${remark}" placeholder="備註"></td>
             <td>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRow(this, 'monthly')">刪除</button>
             </td>
@@ -336,31 +340,45 @@ function generateMonthlyRowHtml(header, body, index) {
 }
 
 /**
- * 產生療程下拉選單
+ * 🔥 核心修正：嚴格依照你提供的關聯邏輯
+ * 左選單 course_info -> 找 course.id -> 關聯 course_item.course_id -> 產出 course_item.name
  */
-function getCourseOptionsHtml(selectedCourseName) {
+function getCourseOptionsHtml(selectedCourseItemName, mainCourseInfo) {
     let options = '<option value="" disabled selected>請選擇療程</option>';
-    coursesItemData.forEach(course => {
-        const isSelected = (selectedCourseName && course.name === selectedCourseName) ? 'selected' : '';
-        options += `<option value="${course.name}" ${isSelected}>${course.name}</option>`;
+    let filteredItems = coursesItemData;
+    
+    if (mainCourseInfo) {
+        // 1. 比對 course_info 找出該主療程 (雙重比對防呆，支援 course_info 或 name)
+        const matchedCourse = coursesData.find(c => c.course_info === mainCourseInfo || c.name === mainCourseInfo);
+        
+        if (matchedCourse) {
+            // 2. 抓出 course.id
+            const mainCourseId = matchedCourse.id;
+            
+            // 3. 關聯 course_item 的 course_id
+            filteredItems = coursesItemData.filter(item => String(item.course_id) === String(mainCourseId));
+        } else {
+            filteredItems = [];
+        }
+    }
+
+    // 4. 取出 course_item 的 name 產生選項
+    filteredItems.forEach(item => {
+        const itemName = item.name;
+        const isSelected = (selectedCourseItemName && itemName === selectedCourseItemName) ? 'selected' : '';
+        options += `<option value="${itemName}" ${isSelected}>${itemName}</option>`;
     });
+    
     return options;
 }
-/**
- * 產生同行者與會員本人下拉選單
- * @param {string} memberName - 會員本人的姓名
- * @param {string} selectedUserName - 目前資料庫儲存的選中使用者
- */
+
 function getPartyOptionsHtml(memberName, selectedUserName) {
-    // 1. 預設顯示空白（不選狀態），如果沒有傳入 selectedUserName，就預設選這個
     let isNoneSelected = !selectedUserName ? 'selected' : '';
-    let options = `<option value="" ${isNoneSelected}>請選擇</option>`; // 如果你想完全空白，可以把 "請選擇" 刪掉留空
+    let options = `<option value="" ${isNoneSelected}>請選擇</option>`; 
     
-    // 2. 加入會員本人（需要判斷目前資料是否選中他）
     let isMemberSelected = (selectedUserName === memberName) ? 'selected' : '';
     options += `<option value="${memberName}" ${isMemberSelected}>${memberName}</option>`;
     
-    // 3. 再遍歷同行者清單
     memberPartyData.forEach(party => {
         const isSelected = (selectedUserName && party.name === selectedUserName) ? 'selected' : '';
         options += `<option value="${party.name}" ${isSelected}>${party.name}</option>`;
@@ -368,39 +386,30 @@ function getPartyOptionsHtml(memberName, selectedUserName) {
     
     return options;
 }
-/**
- * 初始化動態元件的 Datepicker 綁定
- */
+
 function initDynamicDatepickers() {
     if ($.fn.datepicker) {
         $('.js-datepicker').datepicker({
             format: 'yyyy-mm-dd',
             autoclose: true,
-            todayHighlight: true, // 🔥【關鍵】：讓日曆中的「今天」變成黃色/藍色高亮，一眼就能看到
-            defaultViewDate: 'today' // 🔥【關鍵】：如果輸入框是空的，點開日曆時預設切換到本月與今天
+            todayHighlight: true, 
+            defaultViewDate: 'today' 
         });
     }
 }
 
-// ========== 手動新增一列功能 ==========
+// ========== 手動新增/刪除操作區 ==========
 function addMembershipRow() {
     const $tbody = $('#membership_tbody');
     const $lastRowspanCell = $tbody.find('td[rowspan]').last();
 
     if ($lastRowspanCell.length > 0) {
-        // 1. 若已有資料，找到最後一個合併儲存格，將其 rowspan + 1
         let currentSpan = parseInt($lastRowspanCell.attr('rowspan')) || 1;
         $lastRowspanCell.attr('rowspan', currentSpan + 1);
-
-        // 2. 取得該群組的 headerId 以保持結構一致性
         const headerId = $lastRowspanCell.find('input[name="m_header_id[]"]').val() || '';
-
-        // 3. 新增一列「不含區間儲存格 (isFirstRow=false)」的子列
-        // 傳入帶有 headerId 的假物件，讓隱藏欄位綁定不會報錯
         const rowHtml = generateMembershipRowHtml({ id: headerId }, null, 0, false, 1);
         $tbody.append(rowHtml);
     } else {
-        // 如果目前表格完全是空的，則產生一個包含全新區間的列
         const rowHtml = generateMembershipRowHtml(null, null, 0, true, 1);
         $tbody.append(rowHtml);
     }
@@ -416,7 +425,6 @@ function addMonthlyRow() {
     updateCounter('monthly');
 }
 
-// ========== 刪除功能：會員贈送表格（需特別處理合併儲存格） ==========
 function deleteMembershipRow(button, headerId) {
     if (!confirm("確定要移除此列嗎？")) return;
 
@@ -424,18 +432,13 @@ function deleteMembershipRow(button, headerId) {
     const $firstCell = $currentRow.find('td[rowspan]');
 
     if ($firstCell.length > 0) {
-        // 狀況 A：如果刪除的是該群組的「第一列」（也就是帶有 rowspan 的那列）
         const currentLen = parseInt($firstCell.attr('rowspan'));
         if (currentLen > 1) {
-            // 將這個大儲存格移交給下一列，並將 rowspan 減 1
             const $nextRow = $currentRow.next('tr');
             $firstCell.attr('rowspan', currentLen - 1);
             $nextRow.prepend($firstCell); 
         }
     } else {
-        // 狀況 B：如果刪除的是「子列」
-        // 放棄使用 headerId 尋找（避免新增列的 ID 皆為空字串造成誤判）
-        // 改用 DOM 結構：往上尋找最近一個帶有 td[rowspan] 的 tr，將其 rowspan 減 1
         const $prevRowWithSpan = $currentRow.prevAll('tr').filter(function() {
             return $(this).find('td[rowspan]').length > 0;
         }).first();
@@ -452,7 +455,7 @@ function deleteMembershipRow(button, headerId) {
     $currentRow.remove();
     updateCounter('membership');
 }
-// ========== 刪除功能：通用 ==========
+
 function deleteRow(button, type) {
     if(confirm("確定要移除此列嗎？")) {
         $(button).closest('tr').remove();
@@ -468,19 +471,14 @@ function updateCounter(type) {
     }
 }
 
-let currentMemberId = "{{ member_id }}"; // 確保有抓到當前的會員 ID
+// ========== 同行者管理區 ==========
+let currentMemberId = "{{ member_id }}"; 
+let memberPartyData = []; 
 
-// 點擊按鈕打開同行者畫面
 $('#btnMemberParty').click(function () {
-    // 1. 先去後端抓取該會員的同行者清單
     fetchMemberParty(currentMemberId);
-    
-    // 2. 顯示剛剛建立好的同行者 Modal 畫面
     $('#memberPartyModal').modal('show');
 });
-
-// 【新增】宣告一個全域變數，用來存放同行者名單
-let memberPartyData = []; 
 
 function fetchMemberParty(memberId) {
     if (!memberId) return;
@@ -506,14 +504,13 @@ function fetchMemberParty(memberId) {
             
             if (typeof renderGiftTables === 'function') {
                 renderGiftTables();
-                // 🔥【新增這行】：確保因為同行者名單更新而重繪表格後，日曆套件會重新綁定
                 initDynamicDatepickers(); 
             }
         });
 }
-// 新增同行者/家人
+
 $('#btnAddMemberParty').click(function () {
-    let nameInput = $('#name').val().trim(); // 準確抓取 id="name" 的輸入框
+    let nameInput = $('#name').val().trim(); 
     if (!nameInput) { alert('請輸入姓名'); return; }
 
     fetch('/member_party', {
@@ -522,17 +519,12 @@ $('#btnAddMemberParty').click(function () {
         body: JSON.stringify({ name: nameInput, member_id: currentMemberId })
     })
     .then(() => {
-        $('#name').val(''); // 清空 id="name" 的輸入框
-        
-        // 稍微延遲 100 毫秒，確保資料庫寫入完成後再重新撈取，達成即時更新
-        setTimeout(() => {
-            fetchMemberParty(currentMemberId); 
-        }, 100);
+        $('#name').val(''); 
+        setTimeout(() => { fetchMemberParty(currentMemberId); }, 100);
     })
     .catch(err => console.error("新增失敗:", err));
 });
 
-// 修改同行者/家人
 window.editMemberParty = function(id, oldName) {
     let newName = prompt("請輸入新的名稱：", oldName);
     if (newName && newName.trim() !== "" && newName !== oldName) {
@@ -547,7 +539,6 @@ window.editMemberParty = function(id, oldName) {
     }
 };
 
-// 刪除同行者/家人
 window.deleteMemberParty = function(id) {
     if (!confirm("確定要刪除這筆資料嗎？")) return;
     fetch('/member_party/' + id, { method: 'DELETE' })
@@ -555,6 +546,5 @@ window.deleteMemberParty = function(id) {
         setTimeout(() => { fetchMemberParty(currentMemberId); }, 100);
     });
 };
-
 </script>
 {% endblock %}
