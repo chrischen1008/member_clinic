@@ -35,16 +35,17 @@
                             <th style="width: 15%;">會籍截止</th>
                         </tr>
                     </thead>
-                    <tbody>
+                   <tbody>
                         <tr>
                             <td>{{ member.id }}</td>
                             <td>{{ member.name }}</td>
                             <td>{{ member.phone }}</td>
-                            <td>{{ member.birth }}</td>
+                            <!-- 使用 Jinja2 replace 過濾器將橫線轉為斜線 -->
+                            <td>{{ member.birth | replace('-', '/') if member.birth else '' }}</td>
                             <td>{{ member.gender }}</td>
                             <td>{{ member.consultant }}</td>
-                            <td>{{ member.start_at }}</td>
-                            <td>{{ member.end_at }}</td>
+                            <td>{{ member.start_at | replace('-', '/') if member.start_at else '' }}</td>
+                            <td>{{ member.end_at | replace('-', '/') if member.end_at else '' }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -181,7 +182,7 @@ $(document).ready(function() {
 
         // 只有在填了使用時間或選了療程，才去計算顯示
         if (usedAt || courseName) {
-            $row.find('input[name="m_remaining_qty[]"]').val(totalQty - index);
+            $row.find('input[name="m_remaining_qty[]"]').val(totalQty - index-1);
         } else {
             $row.find('input[name="m_remaining_qty[]"]').val('');
         }
@@ -268,10 +269,9 @@ function renderGiftTables() {
 function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
     const headerId = header ? header.id : '';
     const bodyId = body ? body.id : '';
-    const startAt = (header && header.start_at) ? header.start_at : defaultStartAt;
-    const endAt = (header && header.end_at) ? header.end_at : defaultEndAt;
-    
-    const usedAt = body ? (body.use_date || '') : '';        
+    const startAt = ((header && header.start_at) ? header.start_at : defaultStartAt).replace(/-/g, '/');
+    const endAt = ((header && header.end_at) ? header.end_at : defaultEndAt).replace(/-/g, '/');
+    const usedAt = (body ? (body.use_date || '') : '').replace(/-/g, '/');
     const userName = body ? (body.user_name || '') : '';      
     const courseName = body ? (body.use_course || '') : '';    
     
@@ -294,11 +294,11 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
                 <div class="d-flex flex-column gap-1">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">起</span>
-                        <input type="date" class="form-control js-datepicker" name="m_start_at[]" value="${startAt}" autocomplete="off">
+                        <input type="text" class="form-control js-datepicker" name="m_start_at[]" value="${startAt}" autocomplete="off">
                     </div>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">止</span>
-                        <input type="date" class="form-control js-datepicker" name="m_end_at[]" value="${endAt}" autocomplete="off">
+                        <input type="text" class="form-control js-datepicker" name="m_end_at[]" value="${endAt}" autocomplete="off">
                     </div>
                 </div>
             </td>
@@ -316,7 +316,7 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
             </td>
 
             <td>
-                <input type="date" class="form-control js-datepicker" name="m_used_at[]" value="${usedAt}" autocomplete="off">
+                <input type="text" class="form-control js-datepicker" name="m_used_at[]" value="${usedAt}" autocomplete="off">
             </td>
             <td>
                 <select class="form-select" name="m_user_name[]">
@@ -342,8 +342,7 @@ function generateMonthlyRowHtml(header, body, index) {
     const bodyId = body ? body.id : '';
     const startAt = (header && header.start_at) ? header.start_at : defaultStartAt;
     const endAt = (header && header.end_at) ? header.end_at : defaultEndAt;
-    
-    const usedAt = body ? (body.use_date || '') : '';        
+    const usedAt = body ? (body.use_date || '') : ''; 
     const userName = body ? (body.user_name || '') : '';      
     const courseName = body ? (body.use_course || '') : '';    
     
@@ -357,14 +356,14 @@ function generateMonthlyRowHtml(header, body, index) {
         <tr>
             <td>
                 <input type="hidden" name="mo_header_id[]" value="${headerId}">
-                <input type="text" class="form-control js-datepicker" name="mo_start_at[]" value="${startAt}" autocomplete="off">
+                <input type="date" class="form-control js-datepicker" name="mo_start_at[]" value="${startAt}" autocomplete="off">
             </td>
             <td>
-                <input type="text" class="form-control js-datepicker" name="mo_end_at[]" value="${endAt}" autocomplete="off">
+                <input type="date" class="form-control js-datepicker" name="mo_end_at[]" value="${endAt}" autocomplete="off">
             </td>
             <td>
                 <input type="hidden" name="mo_body_id[]" value="${bodyId}">
-                <input type="text" class="form-control js-datepicker" name="mo_used_at[]" value="${usedAt}" autocomplete="off">
+                <input type="date" class="form-control js-datepicker" name="mo_used_at[]" value="${usedAt}" autocomplete="off">
             </td>
             <td>
                 <select class="form-select" name="mo_user_name[]">
@@ -444,7 +443,7 @@ function initDynamicDatepickers() {
         });
 
         $('.js-datepicker').datepicker({
-            format: 'yyyy-mm-dd',
+            format: 'yyyy/mm/dd',
             autoclose: true,
             todayHighlight: true, 
             defaultViewDate: 'today' 

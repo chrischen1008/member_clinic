@@ -399,6 +399,14 @@ def save_batch():
                 if header_id_from_form not in allowed_gift_header_ids:
                     return jsonify({"status": "error", "message": f"越權存取：無權使用主帳單編號 {header_id_from_form}"}), 403
                 current_gift_id = header_id_from_form
+                
+                # 👇 [修復這裡] 補上更新主表 (gift_header) 起訖日期的邏輯
+                supabase.table('gift_header').update({
+                    "start_at": item.get('start_at') if item.get('start_at') else None,
+                    "end_at": item.get('end_at') if item.get('end_at') else None
+                }).eq('id', current_gift_id).execute()
+                # 👆 ----------------------------------------------------
+
             else:
                 if not new_header_id_cache:
                     new_header_data = {

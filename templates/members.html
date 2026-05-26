@@ -5,13 +5,11 @@
 
 <h2>會員基本資料</h2>
 
-<!-- 工具列 -->
 <div class="mb-2 d-flex justify-content-between align-items-start">
     <div>
         <button class="btn btn-primary" id="btnAdd">新增</button>
         <button class="btn btn-warning" id="btnEdit">修改</button>
         <button class="btn btn-danger" id="btnDelete">刪除</button>
-        <!-- 上方的按鈕區：把 data-id 拔掉，因為這裡還不知道使用者想看誰 -->
         <button class="btn btn-outline-success" id="btnMemberRights">會員內容</button>
         <button class="btn btn-outline-dark" id="btnOrders">購買紀錄</button>
 
@@ -41,17 +39,16 @@
     <td data-field="member_id">{{ m.member_id }}</td>
     <td data-field="name">{{ m.name }}</td>
     <td data-field="phone">{{ m.phone }}</td>
-    <td data-field="birth">{{ m.birth }}</td>
+    <td data-field="birth">{{ m.birth | replace('-', '/') if m.birth else '' }}</td>
     <td data-field="gender">{{ m.gender }}</td>
     <td data-field="consultant">{{ m.consultant }}</td> 
-    <td data-field="start_at">{{ m.start_at }}</td>     
-    <td data-field="end_at">{{ m.end_at }}</td>         
+    <td data-field="start_at">{{ m.start_at | replace('-', '/') if m.start_at else '' }}</td>     
+    <td data-field="end_at">{{ m.end_at | replace('-', '/') if m.end_at else '' }}</td>     
 </tr>
 {% endfor %}
 </tbody>
 </table>
 
-<!-- Modal（會員資料） -->
 <div class="modal fade" id="memberModal">
 <div class="modal-dialog">
 <div class="modal-content">
@@ -68,7 +65,6 @@
 <input class="form-control mb-2" id="m_name" placeholder="姓名" autocomplete="off">
 <input class="form-control mb-2" id="m_phone" placeholder="電話" autocomplete="off">
 
-<!-- 生日 -->
 <div class="form-floating mb-2">
   <input type="text" class="form-control" id="m_birth" placeholder=" " autocomplete="off" readonly style="cursor: pointer; background-color: #fff;">
   <label for="m_birth">生日</label>
@@ -80,18 +76,15 @@
     <option value="女">女</option>
 </select>
 
-<!-- 諮詢師下拉選單 -->
 <select class="form-control mb-2" id="m_consultant">
     <option value="" disabled selected>請選擇諮詢師</option>
 </select>
 
-<!-- 開始日 -->
 <div class="form-floating mb-2">
   <input type="text" class="form-control js-datepicker" id="m_start" placeholder=" " autocomplete="off">
   <label for="m_start">開始日</label>
 </div>
 
-<!-- 結束日 -->
 <div class="form-floating mb-2">
   <input type="text" class="form-control js-datepicker" id="m_end" placeholder=" " autocomplete="off">
   <label for="m_end">結束日</label>
@@ -107,7 +100,6 @@
 </div>
 </div>
 
-<!-- ================= 諮詢師清單 Modal ================= -->
 <div class="modal fade" id="consultantModal">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
@@ -126,43 +118,33 @@
     </div>
 </div>
 
-<!-- 生日民國西元日期選擇器 -->
 <style>
     #birthModal .modal-content { border-radius: 12px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
     #birthModal .modal-header { border-bottom: none; justify-content: center; padding-bottom: 0; }
     
-    /* 調整選單樣式，確保完美置中 */
     #birthModal select { 
         display: inline-block;
-        /* 設定固定寬度 */
         width: 100px;
         height: 45px;
-        
-        /* 移除預設的邊界與樣式影響 */
         appearance: none; 
         -webkit-appearance: none;
-        
-        /* 強制文字在選單內置中 */
         text-align: center;
         text-align-last: center;
-        
         border: 2px solid #ced4da;
         border-radius: 8px;
         font-size: 1.2rem;
         font-weight: bold;
         cursor: pointer;
-        margin: 0 5px; /* 年月日之間的微小間距 */
+        margin: 0 5px;
         background-color: #fff;
     }
 
-    /* 確保年/月/日文字與選單垂直置中 */
     .d-flex.justify-content-center {
         font-size: 1.2rem;
         font-weight: bold;
         color: #555;
     }
 
-    /* 設定各自的最小寬度，讓民國年不被擠壓 */
     #b_year { min-width: 110px; }
     #b_month, #b_day { min-width: 80px; }
 
@@ -213,21 +195,20 @@ $(document).ready(function () {
     function populateBirthModal(dateStr) {
         let year, month, day;
         
-        // 1. 解析日期 (YYYY-MM-DD)
-        if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            let parts = dateStr.split('-');
+        // ⭐ 2. 支援斜線或橫線格式解析 (YYYY/MM/DD 或 YYYY-MM-DD)
+        if (dateStr && (dateStr.match(/^\d{4}-\d{2}-\d{2}$/) || dateStr.match(/^\d{4}\/\d{2}\/\d{2}$/))) {
+            let separator = dateStr.includes('/') ? '/' : '-';
+            let parts = dateStr.split(separator);
             year = parseInt(parts[0]);
             month = parseInt(parts[1]);
             day = parseInt(parts[2]);
         } else {
-            // 預設日期 (如果沒有資料，給予預設值)
             let now = new Date();
             year = now.getFullYear();
             month = now.getMonth() + 1;
             day = now.getDate();
         }
 
-        // 2. 判斷要顯示哪種格式 (預設民國)
         if (year > 1911) {
             birthYearType = 'roc';
             $('#tab-roc').addClass('active');
@@ -238,21 +219,25 @@ $(document).ready(function () {
             $('#tab-roc').removeClass('active');
         }
 
-        // 3. 關鍵順序：先重新渲染年份選單，再賦值
         renderBirthYears();
         renderBirthMonths();
         
-        // 設定數值
         let targetYear = (birthYearType === 'roc') ? (year - 1911) : year;
         $('#b_year').val(targetYear);
         $('#b_month').val(month);
         
-        // 4. 必須先重新渲染天數選單，再設定天數 (避免天數選單沒對應到)
         renderBirthDays(); 
         $('#b_day').val(day);
         
         updateBirthPreview();
     }
+
+    // ⭐ 3. 初始化 Datepicker 時，強制指定為斜線格式
+    $('.js-datepicker').datepicker({
+        format: 'yyyy/mm/dd',
+        autoclose: true,
+        todayHighlight: true
+    });
 
     table = $('#membersTable').DataTable({
         pageLength: 30,
@@ -263,25 +248,20 @@ $(document).ready(function () {
         table.search(this.value).draw();
     });
 
-    // ========== 表格行點擊事件 (單一選取機制) ==========
     $('#membersTable tbody').on('click', 'tr', function () {
-        // 同時移除舊的選取狀態與 Bootstrap 的高亮樣式
         $('#membersTable tbody tr').removeClass('selected table-active');
-        
-        // 為當前點擊的行加上選取與高亮
         $(this).addClass('selected table-active');
     });
-    // ========== 新增雙擊表格列跳轉邏輯 ==========
+
     $('#membersTable tbody').on('dblclick', 'tr', function () {
         let selectedMemberId = $(this).data('id');
-        
         if (selectedMemberId) {
-            // 直接跳轉到會籍權益管理頁面，並帶上 member_id
             window.location.href = `/member_rights?member_id=${selectedMemberId}`;
         } else {
             alert("無法取得該會員的 ID！");
         }
     });
+
     function loadConsultantOptions(selectedName = "") {
         fetch('/consultants')
             .then(res => res.json())
@@ -296,27 +276,15 @@ $(document).ready(function () {
             .catch(err => console.error("無法取得諮詢師清單:", err));
     }
 
-    // ========== 新增會員內容按鈕邏輯 ==========
     $('#btnMemberRights').click(function () {
         let row = $('#membersTable tbody tr.selected');
-        
         if(row.length === 0){
             alert("請先點擊選擇一位會員！");
             return;
         }
-
         let selectedMemberId = row.data('id');
-        // 跳轉到會籍權益管理頁面，並帶上 member_id
         window.location.href = `/member_rights?member_id=${selectedMemberId}`;
     });
-
-    // （您可以依照同樣的邏輯，後續為 #btnOrders 綁定購買紀錄的跳轉事件）
-    // $('#btnOrders').click(function () {
-    //     let row = $('#membersTable tbody tr.selected');
-    //     if(row.length === 0){ alert("請先點擊選擇一位會員！"); return; }
-    //     let selectedMemberId = row.data('id');
-    //     window.location.href = `/orders?member_id=${selectedMemberId}`;
-    // });
 
     // ========== 新增 ==========
     $('#btnAdd').click(function () {
@@ -329,14 +297,12 @@ $(document).ready(function () {
     // ========== 修改 ==========
     $('#btnEdit').click(function () {
         let row = $('#membersTable tbody tr.selected');
-
         if(row.length === 0){
             alert("請選擇資料");
             return;
         }
 
         mode = "edit";
-
         $('#m_id').val(row.data('id'));
         $('#m_member_id').val(row.find('td[data-field="member_id"]').text());
         $('#m_name').val(row.find('td[data-field="name"]').text());
@@ -346,12 +312,14 @@ $(document).ready(function () {
         let consultantName = row.find('td[data-field="consultant"]').text();
         loadConsultantOptions(consultantName); 
 
-        // ⭐ 日期欄位：使用 Bootstrap Datepicker 的 update 寫法來帶入資料
+        // 讀取已經是斜線的文字
         let birthVal = row.find('td[data-field="birth"]').text().trim();
         let startVal = row.find('td[data-field="start_at"]').text().trim();
         let endVal   = row.find('td[data-field="end_at"]').text().trim();
 
         $('#m_birth').val(birthVal);
+        
+        // ⭐ 4. 用 Datepicker 'update' 更新斜線日期
         $('#m_start').datepicker('update', startVal);
         $('#m_end').datepicker('update', endVal);
 
@@ -360,15 +328,20 @@ $(document).ready(function () {
 
     // ========== 儲存 ==========
     $('#saveBtn').click(function () {
+        // ⭐ 5. 轉換為後端 PostgreSQL 接受的橫線格式 (YYYY-MM-DD)，避免後端報錯
+        let birthVal = $('#m_birth').val().replace(/\//g, '-');
+        let startVal = $('#m_start').val().replace(/\//g, '-');
+        let endVal   = $('#m_end').val().replace(/\//g, '-');
+
         let payload = {
             member_id: $('#m_member_id').val(),
             name: $('#m_name').val(),
             phone: $('#m_phone').val(),
-            birth: $('#m_birth').val(), 
+            birth: birthVal, 
             gender: $('#m_gender').val(),
             consultant: $('#m_consultant').val(), 
-            start_at: $('#m_start').val(),
-            end_at: $('#m_end').val()
+            start_at: startVal,
+            end_at: endVal
         };
 
         let url = "/members";
@@ -401,7 +374,6 @@ $(document).ready(function () {
             .then(() => location.reload());
     });
 
-    // ⭐ 當「開始日」被重新選擇時，自動把「結束日」改為新選擇日期的一年後
     $('#m_start').on('changeDate', function(e) {
         if (e.date) {
             let autoNextYear = new Date(e.date);
@@ -411,10 +383,9 @@ $(document).ready(function () {
     });
 
     // ================= 生日雙切換 Modal 邏輯 =================
-    let birthYearType = 'roc'; // 預設民國
+    let birthYearType = 'roc'; 
     const currentYearCE = new Date().getFullYear();
 
-    // 產生年份
     function renderBirthYears() {
         let options = '';
         if (birthYearType === 'roc') {
@@ -425,14 +396,12 @@ $(document).ready(function () {
         $('#b_year').html(options);
     }
 
-    // 產生月份
     function renderBirthMonths() {
         let options = '';
         for (let i = 1; i <= 12; i++) options += `<option value="${i}">${i}</option>`;
         $('#b_month').html(options);
     }
 
-    // 產生日期 (自動計算閏年與大小月)
     function renderBirthDays() {
         let y = parseInt($('#b_year').val()) || (birthYearType === 'roc' ? 70 : 1981);
         let m = parseInt($('#b_month').val()) || 1;
@@ -445,11 +414,9 @@ $(document).ready(function () {
         for (let i = 1; i <= daysInMonth; i++) options += `<option value="${i}">${i}</option>`;
         $('#b_day').html(options);
 
-        // 防呆：如果原本選31號，換到2月時自動跳回最後一天
         if (selectedDay && selectedDay <= daysInMonth) $('#b_day').val(selectedDay);
     }
 
-    // 更新預覽文字
     function updateBirthPreview() {
         let y = $('#b_year').val();
         let m = $('#b_month').val().padStart(2, '0');
@@ -458,42 +425,35 @@ $(document).ready(function () {
         $('#b_preview').text(text);
     }
 
-    // 綁定連動變化
     $('#b_year, #b_month').on('change', function() {
         renderBirthDays();
         updateBirthPreview();
     });
     $('#b_day').on('change', updateBirthPreview);
 
-    // ================= 頁籤切換邏輯 (修正版) =================
     $('#birthModal .nav-link').click(function() {
-        // 1. 取得目前選單的數值
         let currentYear = parseInt($('#b_year').val());
         let currentMonth = $('#b_month').val();
         let currentDay = $('#b_day').val();
         
-        // 2. 切換狀態
         let newType = $(this).data('type');
         if (newType === birthYearType) return; 
         
-        // 3. 計算轉換後的年份
         let targetYear;
         if (birthYearType === 'roc' && newType === 'ce') {
-            targetYear = currentYear + 1911; // 民國轉西元
+            targetYear = currentYear + 1911; 
         } else if (birthYearType === 'ce' && newType === 'roc') {
-            targetYear = currentYear - 1911; // 西元轉民國
+            targetYear = currentYear - 1911; 
         } else {
             targetYear = currentYear;
         }
         
-        // 4. 更新類型並重新渲染下拉選單
         birthYearType = newType;
         $('#birthModal .nav-link').removeClass('active');
         $(this).addClass('active');
         
         renderBirthYears(); 
         
-        // 5. 將轉換後的年份與原有的月份日期填回
         $('#b_year').val(targetYear);
         $('#b_month').val(currentMonth);
         
@@ -503,7 +463,6 @@ $(document).ready(function () {
         updateBirthPreview();
     });
 
-    // 點擊原輸入框：開啟 Modal 並帶入目前數值
     $('#m_birth').on('click', function(e) {
         e.preventDefault();
         
@@ -512,7 +471,9 @@ $(document).ready(function () {
         populateBirthModal(currentVal);
 
         if (currentVal && currentVal.length >= 8) {
-            let parts = currentVal.split('-');
+            // ⭐ 6. 支援斜線分隔解析
+            let separator = currentVal.includes('/') ? '/' : '-';
+            let parts = currentVal.split(separator);
             let y = parseInt(parts[0]);
             let m = parseInt(parts[1]);
             let d = parseInt(parts[2]);
@@ -539,7 +500,7 @@ $(document).ready(function () {
         $('#birthModal').modal('show');
     });
 
-    // 點擊確定按鈕：將結果寫回 input
+    // 點擊確定按鈕
     $('#btnConfirmBirth').click(function() {
         let y = parseInt($('#b_year').val());
         let m = $('#b_month').val().padStart(2, '0');
@@ -547,7 +508,8 @@ $(document).ready(function () {
         
         let finalYear = birthYearType === 'roc' ? y + 1911 : y; 
         
-        $('#m_birth').val(`${finalYear}-${m}-${d}`).trigger('input'); 
+        // ⭐ 7. 回填時維持使用者要求的斜線格式
+        $('#m_birth').val(`${finalYear}/${m}/${d}`).trigger('input'); 
         $('#birthModal').modal('hide');
     });
 });
@@ -559,13 +521,13 @@ function clearForm(){
     $('#m_phone').val("");
     $('#m_gender').val("");
     $('#m_consultant').val(""); 
-    
     $('#m_birth').val(""); 
 
     let today = new Date();
     let nextYear = new Date();
     nextYear.setFullYear(today.getFullYear() + 1);
 
+    // ⭐ 8. 新增時自動帶入當天與隔年的斜線格式
     $('#m_start').datepicker('update', today);
     $('#m_end').datepicker('update', nextYear);
 }
