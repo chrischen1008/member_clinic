@@ -17,6 +17,22 @@
     .table th { 
         white-space: nowrap; /* 表頭文字不換行 */
     }
+    /* 針對 tbody 內的 input 進行強制修正 */
+#membership_tbody td .form-control {
+    width: 100% !important;        /* 強制撐滿容器，但受限於 td */
+    padding: 0.25rem 0.375rem !important; /* 縮減 padding，這是避免溢出的關鍵 */
+    box-sizing: border-box !important;   /* 強制將 border/padding 包在寬度內 */
+    margin: 0 !important;
+    display: block !important;
+}
+
+/* 關鍵：防止內容溢出到 td 外面 */
+#membership_tbody td {
+    overflow: hidden !important;   /* 就算 input 再寬，也不會溢出格子 */
+    white-space: nowrap !important;
+    position: relative !important;
+}
+
 </style>
 <h2>會員內容</h2>
 <div class="container-fluid py-3">
@@ -86,12 +102,12 @@
                <thead class="table-light">
                 <tr>
                     <th style="width: 16%;">使用區間</th>
-                    <th style="width: 20%;">使用時間</th>
-                    <th style="width: 12%;">使用者<br>姓名</th>
-                    <th style="width: 18%;">使用療程</th>
-                    <th style="width: 7%;">剩餘<br>堂數</th>
+                    <th style="width: 18%;">使用時間</th>
+                    <th style="width: 14%;">使用者<br>姓名</th>
+                    <th style="width: 17%;">使用療程</th>
+                    <th style="width: 9%;">剩餘<br>堂數</th>
                     <th style="width: 17%;">備註</th>
-                    <th style="width: 10%;">操作</th>
+                    <th style="width: 9%;">操作</th>
                 </tr>
             </thead>
                 <tbody id="membership_tbody">
@@ -334,7 +350,7 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
                     ${getCourseOptionsHtml(courseName, mainCourseInfo)}
                 </select>
             </td>
-            <td><input type="number" class="form-control" name="m_remaining_qty[]" min="0" value="${remaining}"></td>
+            <td class="text-center align-middle"><input type="number" class="form-control form-control-sm" name="m_remaining_qty[]" value="${remaining}"></td>
             <td><textarea class="form-control" name="m_remark[]" placeholder="備註" rows="2">${remark}</textarea></td>
             <td>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMembershipRow(this, '${headerId}')">刪除</button>
@@ -381,7 +397,14 @@ function generateMonthlyRowHtml(header, body, index) {
                     ${getCourseOptionsHtml(courseName, mainCourseInfo)}
                 </select>
             </td>
-            <td><input type="number" class="form-control" name="mo_remaining_qty[]" value="${remaining}"></td>
+            <td><input type="number" 
+       class="form-control form-control-sm" 
+       name="mo_remaining_qty[]" 
+       value="${remaining}"
+       style="width: 100%; box-sizing: border-box; display: block;" 
+       min="0" 
+       max="999"
+       oninput="if(this.value.length > 3) this.value = this.value.slice(0, 3);"></td>
            <td> <textarea class="form-control" name="mo_remark[]" placeholder="備註" rows="3">${remark}</textarea></td>
             <td>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRow(this, 'monthly')">刪除</button>
@@ -391,7 +414,7 @@ function generateMonthlyRowHtml(header, body, index) {
 }
 
 function getCourseOptionsHtml(selectedCourseItemName, mainCourseInfo) {
-    let options = '<option value="" disabled selected>請選擇療程</option>';
+    let options = '<option value="" disabled selected>選擇療程</option>';
     let filteredItems = coursesItemData;
     
     if (mainCourseInfo) {
