@@ -171,6 +171,24 @@ $(document).ready(function() {
         $(this).trigger('input');
     });
 });
+
+$('.custom-navbar').on('click', function(e) {
+    // 1. 如果點擊的是導覽列連結 (.nav-link)，則直接 return，讓連結正常導向
+    if ($(e.target).hasClass('nav-link')) {
+        return;
+    }
+
+    // 2. 如果點擊的是「漢堡按鈕」本身，也不要重複觸發，讓 Bootstrap 原生處理
+    if ($(e.target).closest('.navbar-toggler').length > 0) {
+        return;
+    }
+
+    // 3. 其他情況 (包含點擊品牌文字、空白處)，如果是手機版，就觸發漢堡按鈕的點擊事件
+    if ($(window).width() < 992) {
+        $('.navbar-toggler').trigger('click');
+    }
+});
+
 </script>
 
 {% block scripts %}{% endblock %}
