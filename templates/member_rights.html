@@ -431,30 +431,22 @@ function getPartyOptionsHtml(memberName, selectedUserName) {
 function initDynamicDatepickers() {
     if (!$.fn.datepicker) return;
 
-    // 💡 偵測目前的裝置是否為行動裝置 (手機或平板)
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // 將所有 js-datepicker 的欄位統一確保為 text 型態，避免被舊版瀏覽器的原生 UI 干擾
+    $('.js-datepicker').each(function() {
+        if ($(this).attr('type') === 'date') {
+            $(this).attr('type', 'text');
+        }
+    });
 
-    if (isMobile) {
-        // 如果是手機/iPad：銷毀或不啟用外掛，並移除樣式，讓 iOS 原生 UI 接手
-        $('.js-datepicker').datepicker('destroy'); 
-        // 選擇性調整：iOS 原生 date 欄位有時候寬度會縮小，可以強制它撐滿
-        $('.js-datepicker').css('width', '100%');
-    } else {
-        // 如果是電腦：維持你原本的 Bootstrap Datepicker 外掛
-        $('.js-datepicker').each(function() {
-            // 先確保將 type 改回 text，因為某些舊版電腦瀏覽器對 type="date" 的 UI 支援很醜
-            if ($(this).attr('type') === 'date') {
-                $(this).attr('type', 'text');
-            }
-        });
-
-        $('.js-datepicker').datepicker({
-            format: 'yyyy/mm/dd',
-            autoclose: true,
-            todayHighlight: true, 
-            defaultViewDate: 'today' 
-        });
-    }
+    // 不區分手機或電腦，一律啟動 Bootstrap Datepicker
+    $('.js-datepicker').datepicker({
+        format: 'yyyy/mm/dd',
+        language: 'zh-TW', // 加上繁體中文語系 (如果 layout.html 有引入的話)
+        autoclose: true,
+        todayHighlight: true, 
+        defaultViewDate: 'today',
+        orientation: "bottom auto" // 確保選單往下長，不會被切掉
+    });
 }
 
 function addMembershipRow() {
