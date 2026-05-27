@@ -188,7 +188,18 @@ $('.custom-navbar').on('click', function(e) {
         $('.navbar-toggler').trigger('click');
     }
 });
+$(document).on('click', function(e) {
+    var $target = $(e.target);
+    var $navbarCollapse = $('.navbar-collapse');
+    var $navbarToggler = $('.navbar-toggler');
 
+    // 判斷邏輯：
+    // 1. 選單目前是展開狀態 (擁有 .show class)
+    // 2. 點擊的目標不在導覽列 (.navbar) 的範圍內
+    if ($navbarCollapse.hasClass('show') && !$target.closest('.navbar').length) {
+        $navbarToggler.trigger('click');
+    }
+});
 </script>
 
 {% block scripts %}{% endblock %}
