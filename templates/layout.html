@@ -73,6 +73,9 @@ body {
 .sidebar.collapsed {
     width: 0;
     min-width: 0; /* 記得把 min-width 也歸零，否則會折疊不起來 */
+    padding: 0;       /* 確保沒有留白 */
+    border: none;     /* 移除可能的邊框 */
+    overflow: hidden; /* 徹底隱藏內部文字，防止撐開版面 */
 }
 
 .sidebar a {
@@ -102,6 +105,9 @@ body {
     min-width: 0;
     padding: 20px;
     overflow-x: auto;
+
+    /* 💡 新增這行：讓內容區塊變寬時有滑順的動畫，對應 sidebar 的 0.3s */
+    transition: all 0.3s ease;
 }
 
 /* =========================
@@ -235,6 +241,17 @@ $(document).ready(function() {
     $('#sidebarToggle').on('click', function() {
         $(this).toggleClass('active');
         $('#mySidebar').toggleClass('collapsed');
+
+        // 💡 關鍵新增：等待側邊欄的 CSS 動畫結束 (300 毫秒) 後，強制重新計算寬度
+        setTimeout(function() {
+            // 觸發視窗的 resize 事件，讓常規的 RWD 元素自動撐開
+            $(window).trigger('resize');
+
+            // 如果該頁面有使用 DataTables 表格，強制它重新校正欄位寬度
+            if ($.fn.DataTable) {
+                $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+            }
+        }, 300); // 這裡的 300 對應 CSS 裡的 0.3s
     });
 
     // 2. 自動偵測網址並高亮側邊欄選單

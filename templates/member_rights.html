@@ -9,9 +9,17 @@
     .align-middle td { vertical-align: middle !important; }
     .btn-add { background-color: #ffe8a1; color: #856404; border: 1px solid #dfc371; font-weight: bold; }
     .btn-add:hover { background-color: #dfc371; color: #fff; }
+
+    /* 💡 新增以下樣式：確保手機版元件不會被擠壓變形 */
+    .table input[type="text"], .table input[type="date"], .table input[type="number"], .table select, .table textarea { 
+        min-width: 120px; /* 確保日期和選單能完整顯示 */
+    }
+    .table th { 
+        white-space: nowrap; /* 表頭文字不換行 */
+    }
 </style>
 
-<div class="container py-5">
+<div class="container-fluid py-5">
     <button class="btn btn-outline-success" id="btnMemberRights">會員內容</button>
     <button class="btn btn-outline-dark" id="btnOrders">購買紀錄</button>
     <button class="btn btn-info text-white" id="btnMemberParty">同行者清單</button>
@@ -55,39 +63,43 @@
     
     <form action="/save_batch" method="POST" onsubmit="return false;">
         <input type="hidden" name="member_id" value="{{ member.id }}">
-
-        <div class="card mb-4 shadow-sm" id="membership_card">
-            <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-2">
-                    <span>會員贈送 (共 <span id="txt_membership_count">0</span> 堂)</span>
-                    
-                    <select id="header_course_select" name="main_course_name" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
-                        <option value="" disabled selected>預設療程</option>
-                        {% for course in courses %}
-                            <option value="{{ course.course_info }}">{{ course.course_info }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="button" class="btn btn-sm btn-add" onclick="addMembershipRow()">➕ 新增一列</button>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-bordered mb-0 text-center align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 18%;">使用區間</th>
-                            <th style="width: 5%;">序</th>   <th style="width: 15%;">使用時間</th>
-                            <th style="width: 12%;">使用者姓名</th>
-                            <th style="width: 20%;">使用療程</th>
-                            <th style="width: 10%;">剩餘堂數</th>
-                            <th style="width: 15%;">備註</th>
-                            <th style="width: 10%;">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="membership_tbody">
-                    </tbody>
-                </table>
-            </div>
+    <div class="d-flex justify-content-end mb-3" id="submit_area">
+    <button type="submit" class="btn btn-success btn-lg px-4">儲存</button>
         </div>
+<div class="card mb-4 shadow-sm" id="membership_card">
+    <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <span>會員贈送 (共 <span id="txt_membership_count">0</span> 堂)</span>
+            
+            <select id="header_course_select" name="main_course_name" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
+                <option value="" disabled selected>預設療程</option>
+                {% for course in courses %}
+                    <option value="{{ course.course_info }}">{{ course.course_info }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="button" class="btn btn-sm btn-add" onclick="addMembershipRow()">➕ 新增一列</button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0 text-center align-middle" style="min-width: 900px; table-layout: fixed;">
+               <thead class="table-light">
+                <tr>
+                    <th style="width: 16%;">使用區間</th>
+                    <th style="width: 20%;">使用時間</th>
+                    <th style="width: 12%;">使用者<br>姓名</th>
+                    <th style="width: 18%;">使用療程</th>
+                    <th style="width: 7%;">剩餘<br>堂數</th>
+                    <th style="width: 17%;">備註</th>
+                    <th style="width: 10%;">操作</th>
+                </tr>
+            </thead>
+                <tbody id="membership_tbody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
         <div class="card mb-4 shadow-sm" id="monthly_card">
             <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
@@ -114,9 +126,7 @@
             </div>
         </div>
 
-        <div class="text-end mb-5" id="submit_area">
-            <button type="submit" class="btn btn-success btn-lg px-5">批次儲存至資料庫</button>
-        </div>
+
     </form>
 </div>
 
@@ -312,10 +322,6 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
             <td class="align-middle text-center" data-header-id="${headerId}">
                 <input type="hidden" name="m_header_id[]" value="${headerId}">
                 <input type="hidden" name="m_body_id[]" value="${bodyId}">
-                <span class="seq-text fw-bold"></span>
-            </td>
-
-            <td>
                 <input type="text" class="form-control js-datepicker" name="m_used_at[]" value="${usedAt}" autocomplete="off">
             </td>
             <td>
@@ -329,7 +335,7 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
                 </select>
             </td>
             <td><input type="number" class="form-control" name="m_remaining_qty[]" min="0" value="${remaining}"></td>
-            <td><input type="text" class="form-control" name="m_remark[]" value="${remark}" placeholder="備註"></td>
+            <td><textarea class="form-control" name="m_remark[]" placeholder="備註" rows="2">${remark}</textarea></td>
             <td>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMembershipRow(this, '${headerId}')">刪除</button>
             </td>
@@ -376,7 +382,7 @@ function generateMonthlyRowHtml(header, body, index) {
                 </select>
             </td>
             <td><input type="number" class="form-control" name="mo_remaining_qty[]" value="${remaining}"></td>
-            <td><input type="text" class="form-control" name="mo_remark[]" value="${remark}" placeholder="備註"></td>
+           <td> <textarea class="form-control" name="mo_remark[]" placeholder="備註" rows="3">${remark}</textarea></td>
             <td>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRow(this, 'monthly')">刪除</button>
             </td>
@@ -629,7 +635,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
         const userName = $row.find('select[name="m_user_name[]"]').val() || "";
         const useCourse = $row.find('select[name="m_course_name[]"]').val() || "";
         const remainQty = $row.find('input[name="m_remaining_qty[]"]').val() || "0";
-        const note = $row.find('input[name="m_remark[]"]').val() || "";
+        const note = $row.find('[name="m_remark[]"]').val() || "";
 
         // 🔥 必填檢查：只要其中一個有填，就視為該列「準備要核銷」，其他兩個就變成必填
         if (useDate || userName || useCourse) {
@@ -675,7 +681,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
         const userName = $row.find('select[name="mo_user_name[]"]').val() || "";
         const useCourse = $row.find('select[name="mo_course_name[]"]').val() || "";
         const remainQty = $row.find('input[name="mo_remaining_qty[]"]').val() || "0";
-        const note = $row.find('input[name="mo_remark[]"]').val() || "";
+        const note = $row.find('[name="mo_remark[]"]').val() || "";
 
         // 🔥 每月贈送必填檢查
         if (useDate || userName || useCourse) {
