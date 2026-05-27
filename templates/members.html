@@ -150,9 +150,20 @@
 
     #birthModal .btn-confirm { background-color: #4caea3; color: white; border-radius: 5px; padding: 10px 0; border: none; }
     #birthModal .btn-cancel { background-color: #e0e0e0; color: #555; border-radius: 5px; padding: 10px 0; border: none; }
+
+#birthModal .modal-dialog {
+    position: absolute;
+    margin: 0;
+    max-width: 360px; /* 控制視窗寬度，避免過寬 */
+    
+    /* 移除原本的 top: 50%, left: 50% 與 transform: translate */
+    /* 改用 JavaScript 動態計算出的 left/top 進行定位 */
+    transition: none !important; /* 關閉動畫，避免定位抖動 */
+}
+
 </style>
 <div class="modal fade" id="birthModal" tabindex="-1" style="z-index: 1060;"> 
-    <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-dialog modal-md ">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">選擇出生日期</h5>
@@ -496,7 +507,16 @@ $(document).ready(function () {
                 updateBirthPreview();
             }, 10);
         }
+        // ==========================================
+        // ⭐ 新增：計算輸入框位置，並動態設定 Modal 座標
+        // ==========================================
+        let rect = this.getBoundingClientRect(); // 取得 #m_birth 輸入框在畫面上的相對座標
         
+        $('#birthModal .modal-dialog').css({
+            top: (rect.bottom + 5) + 'px', // 定位在輸入框底部再往下 5px 的位置
+            left: rect.left + 'px'         // 左側與輸入框對齊
+        });
+        // ==========================================
         $('#birthModal').modal('show');
     });
 
