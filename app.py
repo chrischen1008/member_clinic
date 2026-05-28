@@ -221,11 +221,23 @@ def update_consultant(id):
     return "ok"
 
 #========會員內容===========
-
+from datetime import datetime
+import calendar
+from dateutil.relativedelta import relativedelta
 @app.route("/member_rights")
 def member_rights():
     member_id = request.args.get('member_id')
     
+    # 💡 優先撈取會員基本資料與日期格式化（因後續自動生成每月贈送需要 start_at）
+    member_data = supabase.table("members").select("*").eq("id", member_id).execute().data
+    if member_data:
+        member = member_data[0]
+        for field in ['birth', 'start_at', 'end_at']:
+            if member.get(field):
+                member[field] = str(member[field])[:10]
+    else:
+        member = {}
+
     # 1. 先找出該會員所有的 gift_header 紀錄
     gift_header = supabase.table("gift_header").select("*").eq("member_id", member_id).execute().data or []
 
@@ -241,6 +253,65 @@ def member_rights():
     # 4. 巢狀資料組合
     for h in gift_header:
         h["bodies"] = [b for b in gift_body if b["gift_id"] == h["id"]]
+
+    # 🔄 新增：撈取每月贈送主從表（✨ 導入 12 個月自動初始化機制）
+    monthly_header = supabase.table("monthly_header").select("*").eq("member_id", member_id).order('id').execute().data or []
+    
+    # 🚀 如果該會員還沒有每月贈送的主單，初始化 Header 與對應的 Body
+    if not monthly_header and member and member.get("start_at"):
+        base_date = datetime.strptime(member["start_at"], "%Y-%m-%d")
+        header_insert_batch = []
+        
+        # 1. 準備 12 筆 Header 資料
+        # (第 1 筆: 當月~下個月底)
+        next_month = base_date + relativedelta(months=1)
+        last_day_next_month = calendar.monthrange(next_month.year, next_month.month)[1]
+        header_insert_batch.append({
+            "member_id": member_id,
+            "start_date": base_date.strftime("%Y-%m-%d"),
+            "end_date": datetime(next_month.year, next_month.month, last_day_next_month).strftime("%Y-%m-%d")
+        })
+        
+        # (第 2-12 筆: 接續月份)
+        for i in range(2, 13):
+            target_month = base_date + relativedelta(months=i)
+            last_day = calendar.monthrange(target_month.year, target_month.month)[1]
+            header_insert_batch.append({
+                "member_id": member_id,
+                "start_date": datetime(target_month.year, target_month.month, 1).strftime("%Y-%m-%d"),
+                "end_date": datetime(target_month.year, target_month.month, last_day).strftime("%Y-%m-%d")
+            })
+        
+        # 2. 執行 Header Insert 並取得回傳的資料 (包含新的 ID)
+        res = supabase.table("monthly_header").insert(header_insert_batch).execute()
+        monthly_header = res.data # 取得包含新 ID 的 header list
+
+        # 3. 根據新的 Header ID，自動幫每一個月建立「1 個空行」的 body
+        # 這樣前端在顯示時，每個月份至少都會有一行資料是可以被 Update 的
+        body_insert_batch = []
+        for h in monthly_header:
+            # 這裡改成跑兩次，確保每個月份都有兩列可以輸入
+            for _ in range(2):
+                body_insert_batch.append({
+                    "benefit_id": h["id"], # 連結到剛剛建立的 header
+                    "used_date": None,
+                    "user_name": "",
+                    "treatment": "",
+                    "remark": ""
+                })
+        
+        # 執行 Body Insert
+        supabase.table("monthly_body").insert(body_insert_batch).execute()
+        
+        # 重新撈取一次以取得資料庫真實生成的 12 筆完整列表（含資料庫自動產生的 id）
+        monthly_header = supabase.table("monthly_header").select("*").eq("member_id", member_id).order("id").execute().data
+
+    # 🔄 新增：撈取每月贈送明細表 (使用對應資料庫的 benefit_id 欄位)
+    monthly_header_ids = [m["id"] for m in monthly_header]
+    monthly_body = supabase.table("monthly_body").select("*").in_("benefit_id", monthly_header_ids).order("id").execute().data or [] if monthly_header_ids else []
+    
+    for m in monthly_header:
+        m["bodies"] = [b for b in monthly_body if b["benefit_id"] == m["id"]]
 
     # 5. 精準計算與防呆 gift_qty 的數量
     gift_qty = 0 
@@ -273,27 +344,20 @@ def member_rights():
     # 6. 抓取所有的課程資料與項目資料供下拉選單使用
     courses = supabase.table("course").select("*").execute().data or []
     course_item = supabase.table("course_item").select("*").execute().data or []
-    
-    # 7. 會員基本資料與日期格式化
-    member_data = supabase.table("members").select("*").eq("id", member_id).execute().data
-    if member_data:
-        member = member_data[0]
-        for field in ['birth', 'start_at', 'end_at']:
-            if member.get(field):
-                member[field] = str(member[field])[:10]
-    else:
-        member = {}
         
     return render_template(
         "member_rights.html", 
         gift_header=gift_header, 
         gift_body=gift_body,
+        monthly_header=monthly_header,  # ↩ 傳給前端
+        monthly_body=monthly_body,      # ↩ 傳給前端
         courses=courses,
         course_item=course_item,
         member=member,
         default_qty=gift_qty,
         member_id=member_id
     )
+
 
 #========會員同行者=======
 @app.route("/member_party", methods=["GET"])
@@ -447,72 +511,35 @@ def save_batch():
                 print(f"[Debug] 會員贈送 -> 執行 INSERT (全新明細欄位)")
                 supabase.table('gift_body').insert(body_data).execute()
 
-        # ==========================================
-        # 3. 處理「每月贈送」 (Monthly Rows) -> 改寫入新表且不帶 gift_type
-        # ==========================================
-        # 💡 請根據您實際的 DB 調整表名：這裡暫定主表為 'monthly_header'，明細表為 'monthly_body'
-        # monthly_rows = data.get('monthly_rows', [])
-        # for item in monthly_rows:
-        #     body_id = str(item.get('body_id', '')).strip()
-        #     header_id_from_form = str(item.get('header_id', '')).strip()
+        # ==========================================================
+        # 2. 處理「每月贈送」 (手動分離 Update 與 Insert)
+        # ==========================================================
+        monthly_rows = data.get('monthly_rows', [])
+        
+        for item in monthly_rows:
+            body_id = str(item.get('body_id', '')).strip()
+            header_id = str(item.get('header_id', '')).strip()
 
-        #     if body_id.lower() in ['null', 'none', '']: body_id = None
-        #     if header_id_from_form.lower() in ['null', 'none', '']: header_id_from_form = None
+            # [嚴格檢查] 進入此函數的每一筆資料都必須要有 body_id
+            if not body_id or body_id.lower() in ['null', 'none', '']:
+                # 若發現沒有 ID 的資料，這代表前端未正確執行初始化
+                return jsonify({"status": "error", "message": "錯誤：檢測到無效的資料行，請確保資料已正確初始化"}), 400
 
-        #     current_monthly_id = None
+            # 準備資料
+            body_data = {
+                "benefit_id": header_id,
+                "used_date": item.get('use_date') if item.get('use_date') else None,
+                "user_name": item.get('user_name', ''),
+                "treatment": item.get('use_course', ''),
+                "remark": item.get('note', '')
+            }
 
-        #     if header_id_from_form:
-        #         if header_id_from_form not in allowed_monthly_header_ids:
-        #             return jsonify({"status": "error", "message": f"越權存取：無權使用每月主帳單編號 {header_id_from_form}"}), 403
-        #         current_monthly_id = header_id_from_form
-                
-        #         # 同步更新每月主單對應的起迄日期 (操作 monthly_header)
-        #         supabase.table('monthly_header').update({
-        #             "start_at": item.get('start_at') if item.get('start_at') else None,
-        #             "end_at": item.get('end_at') if item.get('end_at') else None
-        #         }).eq('id', current_monthly_id).execute()
-        #     else:
-        #         # 如果是手動增加的全新每月贈送列，幫它獨立建立一個 monthly 的單頭 (移除 gift_type 欄位)
-        #         new_monthly_header_data = {
-        #             "member_id": member_id, 
-        #             "course_name": main_course_name,
-        #             "start_at": item.get('start_at') if item.get('start_at') else None,
-        #             "end_at": item.get('end_at') if item.get('end_at') else None,
-        #             "gift_qty": 1
-        #             # ❌ 已移除 "gift_type": "monthly"
-        #         }
-        #         header_response = supabase.table('monthly_header').insert(new_monthly_header_data).execute()
-        #         if header_response.data:
-        #             current_monthly_id = str(header_response.data[0]['id'])
-        #             allowed_monthly_header_ids.append(current_monthly_id)
+            # [強制 Update]
+            # 因為我們假設所有資料皆已初始化，所以這裡只需要 Update
+            supabase.table('monthly_body').update(body_data).eq('id', int(body_id)).execute()
 
-        #     raw_remaining = item.get('remain_qty', '0')
-        #     # 這裡的外鍵欄位名稱，請確認在 monthly_body 中是否仍叫 "gift_id"，若改為 "monthly_id" 請自行修正
-        #     body_data = {
-        #         "gift_id": current_monthly_id,  
-        #         "use_date": item.get('use_date') if item.get('use_date') else None,
-        #         "user_name": item.get('user_name', ''),
-        #         "use_course": item.get('use_course', ''),
-        #         "remain_qty": int(raw_remaining) if str(raw_remaining).isdigit() else 0,
-        #         "note": item.get('note', '')
-        #     }
-
-        #     if body_id:
-        #         # 安全檢查：改查 monthly_body 表
-        #         check_body = supabase.table("monthly_body").select("gift_id").eq("id", body_id).execute().data or []
-        #         if check_body:
-        #             db_gift_id = str(check_body[0].get("gift_id"))
-        #             if db_gift_id not in allowed_monthly_header_ids:
-        #                 return jsonify({"status": "error", "message": f"越權存取：無權修改每月紀錄編號 {body_id}"}), 403
-                
-        #         print(f"[Debug] 每月贈送 -> 執行 UPDATE (body_id: {body_id})")
-        #         supabase.table('monthly_body').update(body_data).eq('id', body_id).execute()
-        #     else:
-        #         print(f"[Debug] 每月贈送 -> 執行 INSERT")
-        #         supabase.table('monthly_body').insert(body_data).execute()
-
-        return jsonify({"status": "success", "message": "批次儲存成功！"})
-
+        return jsonify({"status": "success", "message": "儲存成功！"})
+    
     except Exception as e:
         print(f"[Debug] 發生錯誤 (Exception): {str(e)}")
         print(traceback.format_exc())

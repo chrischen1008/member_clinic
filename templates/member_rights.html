@@ -17,20 +17,77 @@
     .table th { 
         white-space: nowrap; /* 表頭文字不換行 */
     }
-    /* 針對 tbody 內的 input 進行強制修正 */
-#membership_tbody td .form-control {
-    width: 100% !important;        /* 強制撐滿容器，但受限於 td */
-    padding: 0.25rem 0.375rem !important; /* 縮減 padding，這是避免溢出的關鍵 */
-    box-sizing: border-box !important;   /* 強制將 border/padding 包在寬度內 */
-    margin: 0 !important;
-    display: block !important;
+/* ===== 表格 ===== */
+
+.table {
+    margin-bottom: 0;
+    table-layout: fixed;
+    width: 100%;
 }
 
-/* 關鍵：防止內容溢出到 td 外面 */
-#membership_tbody td {
-    overflow: hidden !important;   /* 就算 input 再寬，也不會溢出格子 */
-    white-space: nowrap !important;
-    position: relative !important;
+.table th,
+.table td {
+    vertical-align: middle !important;
+    padding: 4px;
+}
+
+/* 表頭不換行 */
+.table th {
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+/* ===== input / select ===== */
+
+.table .form-control,
+.table .form-select {
+    width: 100%;
+    min-width: 0 !important;   /* 關鍵 */
+    max-width: 100%;
+    box-sizing: border-box;
+
+    padding: 0.25rem 0.4rem;
+    font-size: 13px;
+    height: 32px;
+}
+
+/* textarea 特別處理 */
+.table textarea.form-control {
+    min-height: 60px;
+    resize: vertical;
+}
+
+/* 日期欄避免爆開 */
+.table input[type="date"] {
+    min-width: 0 !important;
+    font-size: 12px;
+}
+
+/* select 不要超出 */
+.table select {
+    text-overflow: ellipsis;
+}
+
+/* td 不要裁切內容 */
+.table td {
+    overflow: visible !important;
+    white-space: normal !important;
+}
+
+/* 手機版 */
+@media (max-width: 768px) {
+
+    .table th,
+    .table td {
+        padding: 2px;
+    }
+
+    .table .form-control,
+    .table .form-select {
+        font-size: 12px;
+        padding: 0.2rem 0.3rem;
+        height: 30px;
+    }
 }
 
 </style>
@@ -98,7 +155,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-bordered mb-0 text-center align-middle" style="min-width: 900px; table-layout: fixed;">
+            <table class="table table-bordered mb-0 text-center align-middle">
                <thead class="table-light">
                 <tr>
                     <th style="width: 16%;">使用區間</th>
@@ -117,30 +174,31 @@
     </div>
 </div>
 
-        <div class="card mb-4 shadow-sm" id="monthly_card">
-            <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
-                <span>每月贈送 (共 <span id="txt_monthly_count">0</span> 堂)</span>
-                <button type="button" class="btn btn-sm btn-add" onclick="addMonthlyRow()">➕ 新增一列</button>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-bordered mb-0 text-center align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 12%;">開始日期</th>
-                            <th style="width: 12%;">截止日期</th>
-                            <th style="width: 15%;">使用時間</th>
-                            <th style="width: 12%;">使用者姓名</th>
-                            <th style="width: 16%;">使用療程</th>
-                            <th style="width: 8%;">本月剩餘</th>
-                            <th style="width: 15%;">備註</th>
-                            <th style="width: 10%;">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="monthly_tbody">
+<div class="card mb-4 shadow-sm" id="monthly_card">
+    <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+        <span>每月贈送 (共 <span id="txt_monthly_count">0</span> 堂)</span>
+        <!-- <button type="button" class="btn btn-sm btn-add" onclick="addMonthlyRow()">➕ 新增一列</button> -->
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0 text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 12%;">開始日期</th>
+                        <th style="width: 12%;">截止日期</th>
+                        <th style="width: 15%;">使用時間</th>
+                        <th style="width: 15%;">使用者姓名</th>
+                        <th style="width: 16%;">使用療程</th>
+                        <th style="width: 10%;">本月剩餘</th>
+                        <th style="width: 20%;">備註</th>
+                    </tr>
+                </thead>
+                <tbody id="monthly_tbody">
                     </tbody>
-                </table>
-            </div>
+            </table>
         </div>
+    </div>
+</div>
 
 
     </form>
@@ -171,6 +229,7 @@ const giftHeaderData = JSON.parse('{{ gift_header | tojson | safe }}');
 const coursesData = JSON.parse('{{ courses | default([]) | tojson | safe }}');
 const coursesItemData = JSON.parse('{{ course_item | default([]) | tojson | safe }}');
 const defaultQtyFromBackend = Number('{{ default_qty | default(0) }}');
+const monthlyHeaderData = JSON.parse('{{ monthly_header | default([]) | tojson | safe }}');
 
 $(document).ready(function() {
     if (currentMemberId) {
@@ -197,18 +256,18 @@ $(document).ready(function() {
         });
     });
 
-    // ================= 💡 新增：欄位輸入連動計算剩餘堂數 =================
+    // ================= 💡 欄位輸入連動計算剩餘堂數 =================
     // 1. 會員贈送連動
     $('#membership_tbody').on('change input', 'input[name="m_used_at[]"], select[name="m_course_name[]"]', function() {
         const $row = $(this).closest('tr');
         const usedAt = $row.find('input[name="m_used_at[]"]').val();
         const courseName = $row.find('select[name="m_course_name[]"]').val();
         const index = $row.index();
-        const totalQty = $('#membership_tbody tr').length; // 或是用 header 的總量
+        const totalQty = $('#membership_tbody tr').length; 
 
         // 只有在填了使用時間或選了療程，才去計算顯示
         if (usedAt || courseName) {
-            $row.find('input[name="m_remaining_qty[]"]').val(totalQty - index-1);
+            $row.find('input[name="m_remaining_qty[]"]').val(totalQty - index - 1);
         } else {
             $row.find('input[name="m_remaining_qty[]"]').val('');
         }
@@ -221,7 +280,7 @@ $(document).ready(function() {
         const courseName = $row.find('select[name="mo_course_name[]"]').val();
 
         if (usedAt || courseName) {
-            // 每月贈送通常扣減邏輯不一定依序，若有預設規則可在此計算，此處先給 0 或 1
+            // 每月為單一區間，使用後剩餘即為 0
             if (!$row.find('input[name="mo_remaining_qty[]"]').val()) {
                 $row.find('input[name="mo_remaining_qty[]"]').val(0);
             }
@@ -241,9 +300,12 @@ function renderGiftTables() {
     
     let totalMembershipCount = 0;
     let totalMonthlyCount = 0;
+    let monthlyIndex = 0;
 
-    if (giftHeaderData.length === 0) {
-        giftHeaderData.push({
+    // 🚀 修正：檢查是否包含會員贈送的主單，若無則強制在陣列最前面新增一筆預設值
+    const hasMembership = giftHeaderData.some(h => !h.gift_type || h.gift_type === 'membership');
+    if (!hasMembership) {
+        giftHeaderData.unshift({
             id: null,                      
             gift_qty: defaultQtyFromBackend,
             course_name: "三選一療程",      
@@ -253,16 +315,15 @@ function renderGiftTables() {
     }
 
     giftHeaderData.forEach(header => {
-        const qty = (header.gift_qty && header.gift_qty > 0) ? header.gift_qty : defaultQtyFromBackend;
-        header.gift_qty = qty; 
-        
-        const bodies = header.bodies || [];
         const type = header.gift_type || 'membership'; 
+        const bodies = header.bodies || [];
 
         if (type === 'membership') {
+            const qty = (header.gift_qty && header.gift_qty > 0) ? header.gift_qty : defaultQtyFromBackend;
+            header.gift_qty = qty; 
             totalMembershipCount += qty;
-            const loopCount = qty > 0 ? qty : 1; 
             
+            const loopCount = qty > 0 ? qty : 1; 
             for (let i = 0; i < loopCount; i++) {
                 const body = bodies[i] || null;
                 const isFirstRow = (i === 0); 
@@ -270,28 +331,48 @@ function renderGiftTables() {
                 $('#membership_tbody').append(rowHtml);
             }
         } else if (type === 'monthly') {
-            totalMonthlyCount += qty;
-            const loopCount = qty > 0 ? qty : 1;
+            // 🚀 修正：後端已產生 12 個獨立月份的主單，每個 Header 就是一列
+            totalMonthlyCount += 1;
             
-            for (let i = 0; i < loopCount; i++) {
-                const body = bodies[i] || null;
-                const rowHtml = generateMonthlyRowHtml(header, body, i);
-                $('#monthly_tbody').append(rowHtml);
-            }
+            // 該月份最多只有一筆明細
+            const body = bodies[0] || null;
+            const rowHtml = generateMonthlyRowHtml(header, body, monthlyIndex);
+            $('#monthly_tbody').append(rowHtml);
+            monthlyIndex++;
+        }
+    });
+
+    // ==========================================
+    // 🚀 渲染【每月贈送】 (依據附圖：每個月 2 堂課)
+    // ==========================================
+    monthlyHeaderData.forEach(header => {
+        const bodies = header.bodies || [];
+        const loopCount = 2; // 固定每個月 2 堂
+        totalMonthlyCount += loopCount;
+
+        for (let i = 0; i < loopCount; i++) {
+            const body = bodies[i] || null;
+            const isFirstRow = (i === 0); 
+            // 呼叫時傳入總列數 2，讓第一列可以產生 rowspan="2"
+            const rowHtml = generateMonthlyRowHtml(header, body, isFirstRow, loopCount);
+            $('#monthly_tbody').append(rowHtml);
         }
     });
 
     $('#txt_membership_count').text(totalMembershipCount);
-    $('#txt_monthly_count').text(totalMonthlyCount);
+    $('#txt_monthly_count').text(totalMonthlyCount); // 正常情況下應顯示 12
 
-    if (giftHeaderData.length > 0 && giftHeaderData[0].course_name) {
-        $('#header_course_select').val(giftHeaderData[0].course_name);
+    if (giftHeaderData.length > 0) {
+        // 取第一個 membership 的 course_name 來連動下拉選單
+        const firstMembership = giftHeaderData.find(h => !h.gift_type || h.gift_type === 'membership');
+        if (firstMembership && firstMembership.course_name) {
+            $('#header_course_select').val(firstMembership.course_name);
+        }
     }
 
     initDynamicDatepickers();
     refreshSequenceNumbers('membership_tbody'); 
 }
-
 function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
     const headerId = header ? header.id : '';
     const bodyId = body ? body.id : '';
@@ -359,60 +440,85 @@ function generateMembershipRowHtml(header, body, index, isFirstRow, totalRows) {
     `;
 }
 
-function generateMonthlyRowHtml(header, body, index) {
+function generateMonthlyRowHtml(header, body, isFirstRow, totalRows) {
     const headerId = header ? header.id : '';
     const bodyId = body ? body.id : '';
-    const startAt = (header && header.start_at) ? header.start_at : defaultStartAt;
-    const endAt = (header && header.end_at) ? header.end_at : defaultEndAt;
-    const usedAt = body ? (body.use_date || '') : ''; 
-    const userName = body ? (body.user_name || '') : '';      
-    const courseName = body ? (body.use_course || '') : '';    
     
-    // 💡 關鍵修正：每月贈送也是一樣有資料才顯示
-    const remaining = body ? body.remain_qty : '';           
-    const remark = body ? (body.note || '') : '';             
+    // 日期 (對應 monthly_header)
+    const startAt = (header && header.start_date) ? header.start_date.replace(/-/g, '/') : '';
+    const endAt = (header && header.end_date) ? header.end_date.replace(/-/g, '/') : '';
+    
+    // 明細 (對應 monthly_body)
+    const usedAt = (body && body.used_date) ? body.used_date.replace(/-/g, '/') : ''; 
+    const userName = (body && body.user_name) ? body.user_name : '';      
+    const courseName = (body && body.treatment) ? body.treatment : '';    
+    const remark = (body && body.remark) ? body.remark : '';             
+    
+    const mainCourseInfo = $('#header_course_select').val();
 
-    const mainCourseInfo = header ? (header.course_name || $('#header_course_select').val()) : $('#header_course_select').val();
+    // 💡 核心邏輯：計算本月剩餘
+    let remainingQty = totalRows; // 預設最大數量為該月總列數 (例如: 2)
+    if (header && header.bodies) {
+        // 計算這個 benefit_id 下有幾筆已經填寫了 used_date
+        const usedCount = header.bodies.filter(b => b.used_date && b.used_date.trim() !== '').length;
+        remainingQty = header.bodies.length - usedCount;
+    }
+
+    // 💡 判斷背景色: 如果剩餘為 0，整列加上 Bootstrap 的淺綠色 class (table-success)
+    const trClass = (remainingQty === 0) ? 'table-success' : '';
+    // 為了避免原本的 bg-light 蓋掉綠色背景，這邊也連動判斷
+    const dateTdClass = (remainingQty === 0) ? 'table-success' : 'bg-light';
+
+    let dateRowspanHtml = '';
+    let remainingRowspanHtml = '';
+    let hiddenHeaderHtml = '';
+
+    if (isFirstRow) {
+        // 第一列：加上 rowspan 合併「開始日期」、「截止日期」、「本月剩餘」
+        dateRowspanHtml = `
+            <td rowspan="${totalRows}" class="align-middle text-center ${dateTdClass}">
+                <input type="hidden" name="mo_header_id[]" value="${headerId}">
+                <input type="text" class="form-control text-center fw-bold border-0 bg-transparent" name="mo_start_at[]" value="${startAt}" readonly>
+            </td>
+            <td rowspan="${totalRows}" class="align-middle text-center ${dateTdClass}">
+                <input type="text" class="form-control text-center fw-bold border-0 bg-transparent" name="mo_end_at[]" value="${endAt}" readonly>
+            </td>
+        `;
+        remainingRowspanHtml = `
+            <td rowspan="${totalRows}" class="align-middle text-center">
+                <input type="number" class="form-control form-control-sm text-center fw-bold border-0 bg-transparent" name="mo_remaining_qty[]" value="${remainingQty}" readonly>
+            </td>
+        `;
+    } else {
+        // 第二列：只有隱藏的 header_id，不用再畫出日期格子
+        hiddenHeaderHtml = `<input type="hidden" name="mo_header_id[]" value="${headerId}">`;
+    }
 
     return `
-        <tr>
-            <td>
-                <input type="hidden" name="mo_header_id[]" value="${headerId}">
-                <input type="date" class="form-control js-datepicker" name="mo_start_at[]" value="${startAt}" autocomplete="off">
-            </td>
-            <td>
-                <input type="date" class="form-control js-datepicker" name="mo_end_at[]" value="${endAt}" autocomplete="off">
-            </td>
-            <td>
+        <tr class="${trClass}">
+            ${dateRowspanHtml}
+            <td class="align-middle text-center">
+                ${hiddenHeaderHtml}
                 <input type="hidden" name="mo_body_id[]" value="${bodyId}">
-                <input type="date" class="form-control js-datepicker" name="mo_used_at[]" value="${usedAt}" autocomplete="off">
+                <input type="text" class="form-control form-control-sm js-datepicker text-center" name="mo_used_at[]" value="${usedAt}" autocomplete="off">
             </td>
             <td>
-                <select class="form-select" name="mo_user_name[]">
+                <select class="form-select form-select-sm" name="mo_user_name[]">
                     ${getPartyOptionsHtml(currentMemberName, userName)}
                 </select>
             </td>
             <td>
-                <select class="form-select" name="mo_course_name[]">
+                <select class="form-select form-select-sm" name="mo_course_name[]">
                     ${getCourseOptionsHtml(courseName, mainCourseInfo)}
                 </select>
             </td>
-            <td><input type="number" 
-       class="form-control form-control-sm" 
-       name="mo_remaining_qty[]" 
-       value="${remaining}"
-       style="width: 100%; box-sizing: border-box; display: block;" 
-       min="0" 
-       max="999"
-       oninput="if(this.value.length > 3) this.value = this.value.slice(0, 3);"></td>
-           <td> <textarea class="form-control" name="mo_remark[]" placeholder="備註" rows="3">${remark}</textarea></td>
+            ${remainingRowspanHtml}
             <td>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRow(this, 'monthly')">刪除</button>
+                <input type="text" class="form-control form-control-sm" name="mo_remark[]" placeholder="備註" value="${remark}">
             </td>
         </tr>
     `;
 }
-
 function getCourseOptionsHtml(selectedCourseItemName, mainCourseInfo) {
     let options = '<option value="" disabled selected>選擇療程</option>';
     let filteredItems = coursesItemData;
@@ -631,7 +737,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
         monthly_rows: []
     };
 
-    let hasError = false; // 用來標記是否有欄位未填寫
+    let hasError = false; 
 
     // 1. 抓取與檢查 【會員贈送】
     let currentMStart = "";
@@ -639,7 +745,6 @@ document.querySelector('form').addEventListener('submit', function(e) {
     $('#membership_tbody tr').each(function(index) {
         const $row = $(this);
         
-        // 抓取 rowspan 的日期 (只有第一列會有)
         const $startInput = $row.find('input[name="m_start_at[]"]');
         if ($startInput.length > 0) {
             currentMStart = $startInput.val();
@@ -652,23 +757,20 @@ document.querySelector('form').addEventListener('submit', function(e) {
         const remainQty = $row.find('input[name="m_remaining_qty[]"]').val() || "0";
         const note = $row.find('[name="m_remark[]"]').val() || "";
 
-        // 🔥 必填檢查：只要其中一個有填，就視為該列「準備要核銷」，其他兩個就變成必填
         if (useDate || userName || useCourse) {
-            if (!useDate || !userName || !useCourse) {
-                alert(`❌ 儲存失敗：【會員贈送】第 ${index + 1} 列的「使用時間」、「使用者姓名」、「使用療程」為必填組合，請填寫完整！`);
-                $row.css('background-color', '#fff3cd'); // 將有問題的列加上淡淡的黃色背景提醒
-                hasError = true;
-                return false; // 跳出 jQuery .each 迴圈
-            }
+            // if (!useDate || !userName || !useCourse) {
+            //     alert(`❌ 儲存失敗：【會員贈送】第 ${index + 1} 列的「使用時間」、「使用者姓名」、「使用療程」為必填組合，請填寫完整！`);
+            //     $row.css('background-color', '#fff3cd'); 
+            //     hasError = true;
+            //     return false; 
+            // }
         } else {
-            // 如果這列是完全空白的，且不是資料庫原本就有的舊資料（沒有 body_id），可以選擇跳過不送出
             const bodyId = $row.find('input[name="m_body_id[]"]').val() || "";
             if (!bodyId) {
-                return true; // 沒填也沒舊資料，直接跳過這列不打包
+                return true; // 沒填也沒舊資料，直接跳過不打包
             }
         }
 
-        // 移除先前的錯誤背景色
         $row.css('background-color', '');
 
         payload.membership_rows.push({
@@ -684,7 +786,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
         });
     });
 
-    if (hasError) return; // 如果前面有錯誤，攔截不往下執行
+    if (hasError) return; 
 
     // 2. 抓取與檢查 【每月贈送】
     $('#monthly_tbody tr').each(function(index) {
@@ -698,7 +800,6 @@ document.querySelector('form').addEventListener('submit', function(e) {
         const remainQty = $row.find('input[name="mo_remaining_qty[]"]').val() || "0";
         const note = $row.find('[name="mo_remark[]"]').val() || "";
 
-        // 🔥 每月贈送必填檢查
         if (useDate || userName || useCourse) {
             if (!useDate || !userName || !useCourse) {
                 alert(`❌ 儲存失敗：【每月贈送】第 ${index + 1} 列的「使用時間」、「使用者姓名」、「使用療程」為必填組合，請填寫完整！`);
@@ -709,7 +810,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
         } else {
             const bodyId = $row.find('input[name="mo_body_id[]"]').val() || "";
             if (!bodyId) {
-                return true; 
+                return true; // 該月份未填寫且無舊資料，略過打包送出（走 Update 模式）
             }
         }
 
@@ -730,7 +831,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
 
     if (hasError) return; 
 
-    // 3. 驗證通過，正式發送 AJAX 送至後端
+    // 3. 驗證通過，正式發送 AJAX
     fetch('/save_batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -750,6 +851,8 @@ document.querySelector('form').addEventListener('submit', function(e) {
         alert('⚠️ 系統發生錯誤，請檢查網路連線或稍後再試。');
     });
 });
+
+
 function refreshSequenceNumbers(tbodyId) {
     $(`#${tbodyId} tr`).each(function(index) {
         const $cell = $(this).find('td[data-header-id]');
